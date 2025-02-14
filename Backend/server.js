@@ -1,21 +1,28 @@
 import express from 'express';
+import http from 'http';
 import mongoose from 'mongoose';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import { Server } from 'socket.io';
 import authRoutes from './routes/auth.js';
-import documentsRouter from './routes/documents.js';
-import { nanoid } from 'nanoid';
+import documentsRoutes from './routes/documents.js';
+import Document from './models/Document.js';
 import http from 'http';
+import feedbackRoutes from './routes/feedback.routes.js'
 
 dotenv.config();
 
 const app = express();
 
-// Middleware
+// Set COOP header to allow popups and window.postMessage between same-origin popups
+app.use((req, res, next) => {
+  res.setHeader('Cross-Origin-Opener-Policy', 'same-origin-allow-popups');
+  next();
+});
+
 app.use(cors({
-  origin: 'http://localhost:5173', // Frontend URL
-  credentials: true
+  origin: '*',
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS']
 }));
 app.use(express.json());
 
@@ -147,17 +154,62 @@ io.on("connection", (socket) => {
 
 // Routes
 app.use('/api/auth', authRoutes);
-app.use('/api/documents', documentsRouter);
+app.use('/api/documents', documentsRoutes);
+app.use('/api/feedback', feedbackRoutes);
 
-// Error handling middleware
-app.use((err, req, res, next) => {
-  console.error(err.stack);
-  res.status(500).json({ message: 'Something went wrong!' });
+const server = http.createServer(app);
+const io = new Server(server, {
+  cors: {
+    origin: "*",
+    methods: ["GET", "POST"],
+  },
 });
 
-// Basic route for testing
-app.get('/', (req, res) => {
-  res.send('Backend server is running');
+// Connect to MongoDB using your Atlas URI
+mongoose.connect(process.env.MONGODB_URI, {
+  useNewUrlParser: true,
+  useUnifiedTopology: true,
+  serverSelectionTimeoutMS: 30000,
+})
+  .then(() => console.log('Connected to MongoDB'))
+  .catch(err => console.error('Error connecting to MongoDB:', err));
+
+io.on("connection", (socket) => {
+  console.log("A user connected:", socket.id);
+
+  socket.on("join-document", async ({ documentId }) => {
+    socket.join(documentId);
+    console.log(`User joined document: ${documentId}`);
+    try {
+      const document = await Document.findById(documentId);
+      if (document) {
+        socket.emit("load-document", document.data);
+      }
+    } catch (error) {
+      console.error("Error loading document:", error);
+    }
+  });
+
+  socket.on("send-changes", ({ documentId, content }) => {
+    socket.to(documentId).emit("receive-changes", content);
+  });
+
+  socket.on("cursor-move", ({ documentId, cursorPosition, userId }) => {
+    socket.to(documentId).emit("cursor-update", { cursorPosition, userId });
+  });
+
+  socket.on("save-document", async ({ documentId, content }) => {
+    try {
+      await Document.findByIdAndUpdate(documentId, { data: content });
+      console.log("Document saved:", documentId);
+    } catch (error) {
+      console.error("Error saving document:", error);
+    }
+  });
+
+  socket.on("disconnect", () => {
+    console.log("User disconnected:", socket.id);
+  });
 });
 
 // Use server.listen instead of app.listen

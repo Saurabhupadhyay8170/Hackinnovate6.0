@@ -5,6 +5,8 @@ import Dashboard from "./Pages/Dashboard.jsx";
 import Home from "./Pages/Home.jsx";
 import Login from "./Pages/Login.jsx";
 import TextEditor from "./Components/TextEditor/TextEditor.jsx";
+import Room from "./Components/Room.jsx";
+
 
 function App() {
   return (
@@ -16,8 +18,9 @@ function App() {
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/login" element={<Login />} />
           <Route path="/document/d/:documentId" element={<TextEditor />} />
+          <Route path="/room/:roomId" element={<Room />} />
           {/* <Route path="timeline" element={<Timeline />} />
-          <Route path="about" element={<About />} />
+          <Route path="texteditor" element={<TextEditor />} />
           <Route path="events" element={<Event />} />
           <Route path="contact" element={<Contact />} />
           <Route path="eventdetails/:id" element={<EventDetails />} /> */}

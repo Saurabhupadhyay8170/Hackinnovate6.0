@@ -1,60 +1,65 @@
 import React from 'react';
-import { useGoogleLogin } from '@react-oauth/google';
+import { GoogleLogin } from '@react-oauth/google';
+import { useNavigate } from 'react-router-dom';
+import * as jwt_decode from 'jwt-decode';
 import axios from 'axios';
-import { motion } from 'framer-motion';
-import { FcGoogle } from 'react-icons/fc';
 
-const Login = () => {
-  const handleGoogleSuccess = async (tokenResponse) => {
+function Login() {
+  const navigate = useNavigate();
+
+  const handleGoogleSuccess = async (credentialResponse) => {
     try {
-      // Get user info from Google
-      const userInfo = await axios.get(
-        'https://www.googleapis.com/oauth2/v3/userinfo',
-        {
-          headers: { Authorization: `Bearer ${tokenResponse.access_token}` },
-        }
-      );
+      const decoded = jwt_decode.jwtDecode(credentialResponse.credential);
 
-      // Send to our backend
+      const userData = {
+        email: decoded.email,
+        name: decoded.name,
+        picture: decoded.picture,
+        googleId: decoded.sub,
+        token: credentialResponse.credential
+      };
+
       const response = await axios.post(
         `${import.meta.env.VITE_API_URL}/api/auth/google-login`,
-        userInfo.data
+        userData
       );
 
-      // Save token and user info
+      // Store token and user data including _id from backend response
       localStorage.setItem('token', response.data.token);
-      localStorage.setItem('user', JSON.stringify(response.data.user));
-
-      // Redirect to dashboard
-      window.location.href = '/dashboard';
+      localStorage.setItem('user', JSON.stringify({
+        _id: response.data.user._id,  // Store MongoDB ObjectId
+        name: decoded.name,
+        email: decoded.email,
+        picture: decoded.picture,
+      }));
+      
+      navigate('/dashboard');
     } catch (error) {
-      console.error('Login error:', error);
+      console.error('Error processing Google login:', error);
+      if (error.response) {
+        console.error('Backend error:', error.response.data);
+      }
     }
   };
 
-  const login = useGoogleLogin({
-    onSuccess: handleGoogleSuccess,
-    onError: () => console.log('Login Failed'),
-  });
+  const handleGoogleError = (error) => {
+    console.error('Google login failed:', error);
+  };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50">
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="bg-white p-8 rounded-xl shadow-lg max-w-md w-full"
-      >
-        <h2 className="text-3xl font-bold text-center mb-8">Welcome Back</h2>
-        <button
-          onClick={() => login()}
-          className="w-full flex items-center justify-center gap-3 bg-white border border-gray-300 rounded-lg px-6 py-3 text-gray-700 hover:bg-gray-50 transition-colors"
-        >
-          <FcGoogle className="text-2xl" />
-          <span>Continue with Google</span>
-        </button>
-      </motion.div>
+    <div className="flex items-center justify-center min-h-screen bg-gray-100">
+      <div className="p-8 bg-white rounded-lg shadow-md">
+        <h1 className="mb-6 text-2xl font-bold text-center">Login</h1>
+        <div className="flex justify-center">
+          <GoogleLogin
+            onSuccess={handleGoogleSuccess}
+            onError={handleGoogleError}
+            useOneTap
+          />
+        </div>
+      </div>
     </div>
   );
-};
+}
 
-export default Login; 
+export default Login;

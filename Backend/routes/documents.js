@@ -7,14 +7,40 @@ import User from '../models/User.js';
 
 const router = express.Router();
 
-router.post("/create", async (req, res) => {
+// Create new document
+router.post('/create', auth, async (req, res) => {
   try {
-    const { documentId, documentName } = req.body;
-    if (!documentId || !documentName) {
-      return res.status(400).json({ error: "documentId and documentName are required" });
+    if (!req.user || !req.user._id) {
+      return res.status(401).json({ message: 'User not authenticated' });
     }
-    const document = await findOrCreateDocument({ documentId, documentName });
-    res.status(201).json({ documentId: document._id });
+
+    const documentId = nanoid(16);
+    const document = new Document({
+      documentId,
+      author: req.user._id,
+      title: 'Untitled Document',
+      content: '',
+      editorAccess: [],
+      reviewerAccess: [],
+      readerAccess: []
+    });
+    
+    const savedDoc = await document.save();
+
+    // Update or create UserFiles document
+    await UserFiles.findOneAndUpdate(
+      { userId: req.user._id },
+      { 
+        $push: { filesCreated: savedDoc._id },
+        $setOnInsert: { userId: req.user._id }
+      },
+      { upsert: true, new: true }
+    );
+    
+    res.status(201).json({ 
+      documentId: savedDoc.documentId,
+      message: 'Document created successfully' 
+    });
   } catch (error) {
     console.error('Document creation error:', error);
     res.status(500).json({ 
@@ -207,4 +233,4 @@ router.post('/:documentId/share', auth, async (req, res) => {
   }
 });
 
-export default router;
+export default router; 

@@ -1,12 +1,10 @@
 import express from 'express';
 import jwt from 'jsonwebtoken';
-import dotenv from 'dotenv';
-dotenv.config();
+import User from '../models/User.js';
 
 const router = express.Router();
 
-// Example Google login route (adjust the logic as needed)
-router.post("/google-login", async (req, res) => {
+router.post('/google-login', async (req, res) => {
   try {
     const { email, name, picture, googleId, token } = req.body;
 
@@ -63,9 +61,36 @@ router.post("/google-login", async (req, res) => {
       }
     });
   } catch (error) {
-    console.error("Error in /api/auth/google-login:", error);
-    res.status(500).json({ error: "Internal Server Error", details: error.message });
+    console.error('Google login error:', error);
+    res.status(500).json({ 
+      message: 'Error processing login',
+      error: error.message 
+    });
   }
+});
+
+// Add a route to get user stats
+router.get('/user-stats/:userId', async (req, res) => {
+  try {
+    const user = await User.findById(req.params.userId);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    res.json({
+      visitCount: user.visitCount,
+      lastVisit: user.lastVisit,
+      createdAt: user.createdAt
+    });
+  } catch (error) {
+    console.error('Error fetching user stats:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Test route
+router.get('/test', (req, res) => {
+  res.json({ message: 'Auth routes working' });
 });
 
 export default router;

@@ -16,18 +16,18 @@ function Login() {
         name: decoded.name,
         picture: decoded.picture,
         googleId: decoded.sub,
-        token: credentialResponse.credential // Adding the original token
+        token: credentialResponse.credential
       };
-
 
       const response = await axios.post(
         `${import.meta.env.VITE_API_URL}/api/auth/google-login`,
         userData
       );
 
-
+      // Store token and user data including _id from backend response
       localStorage.setItem('token', response.data.token);
       localStorage.setItem('user', JSON.stringify({
+        _id: response.data.user._id,  // Store MongoDB ObjectId
         name: decoded.name,
         email: decoded.email,
         picture: decoded.picture,
@@ -37,7 +37,7 @@ function Login() {
     } catch (error) {
       console.error('Error processing Google login:', error);
       if (error.response) {
-        console.error('Backend error:', error.response.data); // Debug log
+        console.error('Backend error:', error.response.data);
       }
     }
   };

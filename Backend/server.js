@@ -5,8 +5,8 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import { Server } from 'socket.io';
 import authRoutes from './routes/auth.js';
-import documentsRoutes from './routes/documents.js';
-import Document from './models/Document.js';
+import documentsRouter from './routes/documents.js';
+import { nanoid } from 'nanoid';
 
 dotenv.config();
 
@@ -25,64 +25,29 @@ app.use(cors({
 app.use(express.json());
 
 app.use('/api/auth', authRoutes);
-app.use('/api/documents', documentsRoutes);
+app.use('/api/documents', documentsRouter);
 
-const server = http.createServer(app);
-const io = new Server(server, {
-  cors: {
-    origin: "*",
-    methods: ["GET", "POST"],
-  },
+// Error handling middleware
+app.use((err, req, res, next) => {
+  console.error(err.stack);
+  res.status(500).json({ message: 'Something went wrong!' });
 });
 
-// Connect to MongoDB using the provided URI
-mongoose.connect(process.env.MONGODB_URI, {
-  useNewUrlParser: true,
-  useUnifiedTopology: true,
-  serverSelectionTimeoutMS: 30000,
-})
-  .then(() => console.log('Connected to MongoDB'))
-  .catch(err => console.error('Error connecting to MongoDB:', err));
-
-io.on("connection", (socket) => {
-  console.log("A user connected:", socket.id);
-
-  socket.on("join-document", async ({ documentId }) => {
-    socket.join(documentId);
-    console.log(`User joined document: ${documentId}`);
-    try {
-      const document = await Document.findById(documentId);
-      if (document) {
-        socket.emit("load-document", document.data);
-      }
-    } catch (error) {
-      console.error("Error loading document:", error);
-    }
-  });
-
-  socket.on("send-changes", ({ documentId, content }) => {
-    socket.to(documentId).emit("receive-changes", content);
-  });
-
-  socket.on("cursor-move", ({ documentId, cursorPosition, userId }) => {
-    socket.to(documentId).emit("cursor-update", { cursorPosition, userId });
-  });
-
-  socket.on("save-document", async ({ documentId, content }) => {
-    try {
-      await Document.findByIdAndUpdate(documentId, { data: content });
-      console.log("Document saved:", documentId);
-    } catch (error) {
-      console.error("Error saving document:", error);
-    }
-  });
-
-  socket.on("disconnect", () => {
-    console.log("User disconnected:", socket.id);
-  });
+// Basic route for testing
+app.get('/', (req, res) => {
+  res.send('Backend server is running');
 });
 
 const PORT = process.env.PORT || 5000;
 server.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
 });
+
+// Handle unhandled promise rejections
+process.on('unhandledRejection', (err) => {
+  console.error('Unhandled Promise Rejection:', err);
+  // Close server & exit process
+  server.close(() => process.exit(1));
+});
+
+export default app;

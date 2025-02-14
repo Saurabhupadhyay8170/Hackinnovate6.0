@@ -16,8 +16,55 @@ import {
 import api from '../../utils/api';
 import ShareModal from '../ShareModal/ShareModal';
 import { io } from "socket.io-client";
+import axios from 'axios';
 
-const socket = io("http://localhost:4000");
+const socket = io(import.meta.env.VITE_API_URL || "http://localhost:4000", {
+  withCredentials: true,
+  transports: ['websocket', 'polling'],
+  reconnection: true,
+  reconnectionAttempts: 5,
+  reconnectionDelay: 1000
+});
+const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY || "AIzaSyAKkCKtLyIfZt8KTfaOLPG0ylKVmrNy5T8";
+
+const AISuggestion = ({ suggestion, position, onAccept, onDismiss }) => {
+  if (!suggestion) return null;
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: -10 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -10 }}
+      className="absolute z-50"
+      style={{
+        left: position.x,
+        top: position.y + 24,
+      }}
+    >
+      <div className="bg-white rounded-lg shadow-lg border border-gray-200 p-3 max-w-md">
+        <div className="flex items-center gap-2 mb-2">
+          <div className="w-4 h-4 rounded-full bg-purple-500 animate-pulse" />
+          <span className="text-sm font-medium text-gray-600">AI Suggestion</span>
+        </div>
+        <p className="text-gray-700 mb-2">{suggestion}</p>
+        <div className="flex justify-end gap-2">
+          <button
+            onClick={onDismiss}
+            className="px-3 py-1 text-sm text-gray-600 hover:bg-gray-100 rounded"
+          >
+            Dismiss
+          </button>
+          <button
+            onClick={onAccept}
+            className="px-3 py-1 text-sm bg-purple-500 text-white rounded hover:bg-purple-600"
+          >
+            Accept ⌘↵
+          </button>
+        </div>
+      </div>
+    </motion.div>
+  );
+};
 
 function TextEditor() {
   const { documentId } = useParams();
@@ -36,8 +83,97 @@ function TextEditor() {
       name: user.name,
     };
   });
-  const [userCursor, setUserCursor] = useState({ x: 0, y: 0 });
-  const colors = ['#FF0000', '#00FF00', '#0000FF', '#FFA500', '#800080']; // Cursor colors
+
+  //Auto Complete Cursor
+
+  const getCursorPosition = () => {
+    const selection = window.getSelection();
+    if (!selection.rangeCount) return null;
+  
+    const range = selection.getRangeAt(0);
+    const rect = range.getBoundingClientRect();
+  
+    return { x: rect.left, y: rect.top + 25 }; // Position suggestion below cursor
+  };
+
+  const fetchCompletion = async (text) => {
+    if (!text.trim()) return "";
+  
+    try {
+      const response = await axios.post(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateText?key=YOUR_GEMINI_API_KEY`,
+        {
+          prompt: { text: `Complete this sentence: "${text}"` },
+          maxTokens: 50
+        }
+      );
+  
+      return response.data.candidates[0].output || "";
+    } catch (error) {
+      console.error("Error fetching AI completion:", error);
+      return "";
+    }
+  };
+  const [content, setContent] = useState("");
+  const [aiSuggestion, setAiSuggestion] = useState("");
+  const [cursorPosition, setCursorPosition] = useState({ x: 0, y: 0 });
+  const [showSuggestion, setShowSuggestion] = useState(false);
+  const [lastText, setLastText] = useState("");
+  const [isAIEnabled, setIsAIEnabled] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [context, setContext] = useState('');
+
+  const AihandleInput = async (e) => {
+    const text = e.target.innerText;
+    setContent(text);
+
+    const aiSuggestion = await fetchCompletion(text);
+    setAiSuggestion(aiSuggestion);
+  };
+
+  const AihandleKeyUp = () => {
+    const pos = getCursorPosition();
+    if (pos) setCursorPosition(pos);
+  };
+
+  // Handle keyboard shortcuts
+  const handleKeyboardShortcuts = useCallback((event) => {
+    // Toggle AI with Cmd+/ or Ctrl+/
+    if ((event.metaKey || event.ctrlKey) && event.key === '/') {
+      event.preventDefault();
+      setIsAIEnabled(prev => !prev);
+      
+      // If turning off AI, clear suggestions
+      if (isAIEnabled) {
+        setShowSuggestion(false);
+        setAiSuggestion('');
+        setContext('');
+      } else {
+        // If turning on AI, trigger suggestion
+        triggerAISuggestion();
+      }
+    }
+    
+    // Accept suggestion with Cmd/Ctrl + Enter
+    if (showSuggestion && (event.metaKey || event.ctrlKey) && event.key === 'Enter') {
+      event.preventDefault();
+      acceptSuggestion();
+    }
+
+    // Dismiss with Escape
+    if (event.key === 'Escape' && showSuggestion) {
+      event.preventDefault();
+      setShowSuggestion(false);
+    }
+  }, [isAIEnabled, showSuggestion]);
+
+  // Add keyboard shortcut listener
+  useEffect(() => {
+    document.addEventListener('keydown', handleKeyboardShortcuts);
+    return () => {
+      document.removeEventListener('keydown', handleKeyboardShortcuts);
+    };
+  }, [handleKeyboardShortcuts]);
 
   // Move editor initialization before the useEffect
   const editor = useEditor({
@@ -60,6 +196,17 @@ function TextEditor() {
       handleContentChange(content);
       // Emit changes to other users
       socket.emit("send-changes", content);
+      
+      // Only trigger AI if enabled
+      if (isAIEnabled) {
+        const { view } = editor;
+        const pos = view.coordsAtPos(view.state.selection.anchor);
+        setCursorPosition({ x: pos.left, y: pos.top });
+        
+        // Get text for AI completion
+        const text = editor.getText();
+        handleAICompletion(text);
+      }
     },
     onSelectionUpdate: ({ editor }) => {
       const { from, to } = editor.state.selection;
@@ -71,6 +218,22 @@ function TextEditor() {
         });
       }
     },
+    onKeyDown: ({ event }) => {
+      // Trigger AI suggestion with Cmd+/
+      if ((event.metaKey || event.ctrlKey) && event.key === '/') {
+        event.preventDefault();
+        triggerAISuggestion();
+      }
+      // Accept suggestion with Cmd+Enter
+      if (showSuggestion && (event.metaKey || event.ctrlKey) && event.key === 'Enter') {
+        event.preventDefault();
+        acceptSuggestion();
+      }
+      // Dismiss with Escape
+      if (event.key === 'Escape') {
+        setShowSuggestion(false);
+      }
+    }
   });
 
   // Socket.IO effect
@@ -121,10 +284,14 @@ function TextEditor() {
     };
   }, [documentId, editor, localUser]);
 
-  const handleContentChange = useCallback((content) => {
-    setSaving(true);
-    saveDocument(content);
-  }, []);
+  const handleContentChange = useCallback((newContent) => {
+    setContent(newContent);
+    // Save to server
+    socket.emit('send-changes', {
+      documentId,
+      content: newContent
+    });
+  }, [documentId]);
 
   const saveDocument = async (content) => {
     try {
@@ -461,8 +628,233 @@ function TextEditor() {
     );
   };
 
+  const handleAICompletion = async (text) => {
+    if (!text.trim() || text === lastText) return;
+    setLastText(text);
+
+    try {
+      const response = await axios.post(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${GEMINI_API_KEY}`,
+        {
+          contents: [{
+            parts: [{
+              text: `Complete this sentence naturally: "${text}"`
+            }]
+          }],
+          generationConfig: {
+            temperature: 0.7,
+            maxOutputTokens: 50,
+            topP: 0.8,
+            topK: 40
+          }
+        },
+        {
+          headers: {
+            'Content-Type': 'application/json'
+          }
+        }
+      );
+
+      const suggestion = response.data.candidates?.[0]?.content?.parts?.[0]?.text;
+      if (suggestion) {
+        setAiSuggestion(suggestion);
+        setShowSuggestion(true);
+      }
+    } catch (error) {
+      console.error("Error fetching AI completion:", error);
+      if (error.response) {
+        console.error("API Error Details:", error.response.data);
+      }
+    }
+  };
+
+  const acceptSuggestion = useCallback(() => {
+    if (!editor || !aiSuggestion) return;
+    
+    editor.commands.insertContent(aiSuggestion);
+    setShowSuggestion(false);
+    setAiSuggestion("");
+  }, [editor, aiSuggestion]);
+
+  // Add connection status handling
+  useEffect(() => {
+    socket.on('connect', () => {
+      console.log('Connected to server');
+    });
+
+    socket.on('connect_error', (error) => {
+      console.error('Connection error:', error);
+    });
+
+    socket.on('disconnect', () => {
+      console.log('Disconnected from server');
+    });
+
+    return () => {
+      socket.off('connect');
+      socket.off('connect_error');
+      socket.off('disconnect');
+    };
+  }, []);
+
+  // Update the triggerAISuggestion function with better prompting
+  const triggerAISuggestion = useCallback(async () => {
+    if (!editor) return;
+    
+    setIsLoading(true);
+    const selection = editor.state.selection;
+    const pos = editor.view.coordsAtPos(selection.anchor);
+    setCursorPosition({ x: pos.left, y: pos.top });
+
+    // Get better context for more accurate suggestions
+    const text = editor.getText();
+    const currentParagraph = text.split('\n').pop() || '';
+    const previousParagraph = text.split('\n').slice(-2)[0] || '';
+    setContext(currentParagraph);
+
+    try {
+      const response = await axios.post(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${GEMINI_API_KEY}`,
+        {
+          contents: [{
+            parts: [{
+              text: `Given this context from a document:
+              Previous paragraph: "${previousParagraph}"
+              Current paragraph: "${currentParagraph}"
+              
+              Continue the current paragraph naturally, maintaining the same:
+              - Writing style and tone
+              - Technical level
+              - Context and theme
+              
+              Provide a concise, contextually relevant continuation that flows seamlessly.
+              Response should be direct continuation without repetition.`
+            }]
+          }],
+          generationConfig: {
+            temperature: 0.7,
+            maxOutputTokens: 100,
+            topP: 0.9,
+            topK: 40,
+            stopSequences: ["\n", ".", "!", "?"]
+          },
+          safetySettings: [
+            {
+              category: "HARM_CATEGORY_HARASSMENT",
+              threshold: "BLOCK_MEDIUM_AND_ABOVE"
+            }
+          ]
+        },
+        {
+          headers: {
+            'Content-Type': 'application/json'
+          }
+        }
+      );
+
+      const suggestion = response.data.candidates?.[0]?.content?.parts?.[0]?.text;
+      if (suggestion) {
+        setAiSuggestion(suggestion.trim());
+        setShowSuggestion(true);
+      }
+    } catch (error) {
+      console.error("Error fetching AI completion:", error);
+      if (error.response) {
+        console.error("API Error Details:", error.response.data);
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  }, [editor]);
+
   return (
     <div className="min-h-screen bg-white">
+      {/* Add AI status indicator */}
+      <div className="fixed bottom-4 right-4 z-50">
+        <div 
+          className={`flex items-center gap-2 px-3 py-2 rounded-full shadow-lg ${
+            isAIEnabled ? 'bg-purple-500 text-white' : 'bg-gray-100 text-gray-600'
+          }`}
+        >
+          <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+            <path d="M10 12a2 2 0 100-4 2 2 0 000 4z" />
+            <path fillRule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clipRule="evenodd" />
+          </svg>
+          <span className="text-sm font-medium">
+            AI {isAIEnabled ? 'Enabled' : 'Disabled'}
+          </span>
+          <kbd className="text-xs bg-black/20 px-1.5 py-0.5 rounded">
+            ⌘/
+          </kbd>
+        </div>
+      </div>
+
+      {/* Update suggestion popup */}
+      <AnimatePresence>
+        {showSuggestion && isAIEnabled && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            className="absolute z-50"
+            style={{
+              left: cursorPosition.x,
+              top: cursorPosition.y + 24,
+            }}
+          >
+            <div className="bg-white rounded-lg shadow-lg border border-gray-200 p-4 max-w-md">
+              <div className="flex items-center gap-2 mb-3">
+                {isLoading ? (
+                  <div className="flex items-center gap-2">
+                    <div className="w-4 h-4 rounded-full bg-purple-500 animate-pulse" />
+                    <span className="text-sm font-medium text-gray-600">Thinking...</span>
+                  </div>
+                ) : (
+                  <>
+                    <svg className="w-5 h-5 text-purple-500" fill="currentColor" viewBox="0 0 20 20">
+                      <path d="M10 12a2 2 0 100-4 2 2 0 000 4z" />
+                      <path fillRule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clipRule="evenodd" />
+                    </svg>
+                    <span className="text-sm font-medium text-gray-600">AI Suggestion</span>
+                  </>
+                )}
+              </div>
+              
+              {context && (
+                <div className="mb-2 text-xs text-gray-500 bg-gray-50 p-2 rounded">
+                  Context: "{context}"
+                </div>
+              )}
+              
+              <p className="text-gray-700 mb-3 font-medium">
+                {aiSuggestion}
+              </p>
+              
+              <div className="flex justify-between items-center">
+                <div className="text-xs text-gray-500">
+                  Press ⌘/ for new suggestions
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => setShowSuggestion(false)}
+                    className="px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-100 rounded-md transition-colors"
+                  >
+                    Dismiss (Esc)
+                  </button>
+                  <button
+                    onClick={acceptSuggestion}
+                    className="px-3 py-1.5 text-sm bg-purple-500 text-white rounded-md hover:bg-purple-600 transition-colors flex items-center gap-1"
+                  >
+                    <span>Accept</span>
+                    <kbd className="text-xs bg-purple-600 px-1.5 py-0.5 rounded">⌘↵</kbd>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}

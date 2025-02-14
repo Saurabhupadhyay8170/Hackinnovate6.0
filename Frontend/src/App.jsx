@@ -15,6 +15,7 @@ function App() {
     <Router>
       <Routes>
         <Route element={<Layout />}>
+        <Route path="/room/:roomId" element={<Room />} />
           <Route 
             index 
             element={

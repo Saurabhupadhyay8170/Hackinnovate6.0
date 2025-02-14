@@ -9,10 +9,11 @@ import {
   RiBold, RiItalic, RiUnderline, RiAlignLeft, RiAlignCenter,
   RiAlignRight, RiAlignJustify, RiFormatClear, RiListOrdered,
   RiListUnordered, RiArrowGoBackLine, RiArrowGoForwardLine,
-  RiShareLine
+  RiShareLine, RiMessage2Line
 } from 'react-icons/ri';
 import api from '../../utils/api';
 import ShareModal from '../ShareModal/ShareModal';
+import Feedback from '../Feedback/Feedback';
 
 function TextEditor() {
   const { documentId } = useParams();
@@ -22,6 +23,7 @@ function TextEditor() {
   const [saveStatus, setSaveStatus] = useState({ status: 'saved', message: 'All changes saved' });
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const [userRole, setUserRole] = useState(null);
+  const [isFeedbackModalOpen, setIsFeedbackModalOpen] = useState(false);
 
   const editor = useEditor({
     extensions: [
@@ -37,9 +39,12 @@ function TextEditor() {
     ],
     content: '',
     autofocus: true,
+    editable: userRole === 'author',
     onUpdate: ({ editor }) => {
-      const content = editor.getHTML();
-      handleContentChange(content);
+      if (userRole === 'author') {
+        const content = editor.getHTML();
+        handleContentChange(content);
+      }
     },
   });
 
@@ -169,132 +174,146 @@ function TextEditor() {
           <input
             type="text"
             value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            onBlur={(e) => handleTitleChange(e.target.value)}
-            className="w-full text-3xl font-bold p-2 border-none outline-none bg-transparent group-hover:bg-gray-50 rounded transition-colors"
+            onChange={(e) => userRole === 'author' ? setTitle(e.target.value) : null}
+            onBlur={(e) => userRole === 'author' ? handleTitleChange(e.target.value) : null}
+            className={`w-full text-3xl font-bold p-2 border-none outline-none bg-transparent 
+              ${userRole === 'author' ? 'group-hover:bg-gray-50' : ''} rounded transition-colors`}
             placeholder="Untitled Document"
+            readOnly={userRole !== 'author'}
           />
         </div>
 
         <div className="sticky top-0 z-40 bg-white border-b mb-4 p-2 flex flex-wrap gap-2">
-          <div className="flex items-center gap-1 border-r pr-2">
-            <MenuButton
-              onClick={() => editor.chain().focus().undo().run()}
-              icon={RiArrowGoBackLine}
-              tooltip="Undo"
-            />
-            <MenuButton
-              onClick={() => editor.chain().focus().redo().run()}
-              icon={RiArrowGoForwardLine}
-              tooltip="Redo"
-            />
-          </div>
-
-          <div className="flex items-center gap-1 border-r pr-2">
-            <select
-              onChange={(e) => toggleHeading(e.target.value)}
-              value={
-                editor?.isActive('heading', { level: 1 })
-                  ? '1'
-                  : editor?.isActive('heading', { level: 2 })
-                  ? '2'
-                  : editor?.isActive('heading', { level: 3 })
-                  ? '3'
-                  : 'paragraph'
-              }
-              className="p-1 border rounded bg-white"
-            >
-              <option value="paragraph">Normal</option>
-              <option value="1">Heading 1</option>
-              <option value="2">Heading 2</option>
-              <option value="3">Heading 3</option>
-            </select>
-          </div>
-
-          <div className="flex items-center gap-1 border-r pr-2">
-            <MenuButton
-              onClick={() => editor.chain().focus().toggleBold().run()}
-              isActive={editor.isActive('bold')}
-              icon={RiBold}
-              tooltip="Bold"
-            />
-            <MenuButton
-              onClick={() => editor.chain().focus().toggleItalic().run()}
-              isActive={editor.isActive('italic')}
-              icon={RiItalic}
-              tooltip="Italic"
-            />
-            <MenuButton
-              onClick={() => editor.chain().focus().toggleUnderline().run()}
-              isActive={editor.isActive('underline')}
-              icon={RiUnderline}
-              tooltip="Underline"
-            />
-          </div>
-
-          <div className="flex items-center gap-1 border-r pr-2">
-            <MenuButton
-              onClick={() => editor.chain().focus().setTextAlign('left').run()}
-              isActive={editor.isActive({ textAlign: 'left' })}
-              icon={RiAlignLeft}
-              tooltip="Align Left"
-            />
-            <MenuButton
-              onClick={() => editor.chain().focus().setTextAlign('center').run()}
-              isActive={editor.isActive({ textAlign: 'center' })}
-              icon={RiAlignCenter}
-              tooltip="Align Center"
-            />
-            <MenuButton
-              onClick={() => editor.chain().focus().setTextAlign('right').run()}
-              isActive={editor.isActive({ textAlign: 'right' })}
-              icon={RiAlignRight}
-              tooltip="Align Right"
-            />
-            <MenuButton
-              onClick={() => editor.chain().focus().setTextAlign('justify').run()}
-              isActive={editor.isActive({ textAlign: 'justify' })}
-              icon={RiAlignJustify}
-              tooltip="Justify"
-            />
-          </div>
-
-          <div className="flex items-center gap-1 border-r pr-2">
-            <MenuButton
-              onClick={() => editor.chain().focus().toggleBulletList().run()}
-              isActive={editor.isActive('bulletList')}
-              icon={RiListUnordered}
-              tooltip="Bullet List"
-            />
-            <MenuButton
-              onClick={() => editor.chain().focus().toggleOrderedList().run()}
-              isActive={editor.isActive('orderedList')}
-              icon={RiListOrdered}
-              tooltip="Numbered List"
-            />
-          </div>
-
-          <MenuButton
-            onClick={() => editor.chain().focus().clearNodes().unsetAllMarks().run()}
-            icon={RiFormatClear}
-            tooltip="Clear Formatting"
-          />
-
           {userRole === 'author' && (
-            <div className="bg-red-500 flex items-center gap-1 border-l rounded-lg hover:bg-red-400">
-              <MenuButton
-                onClick={() => setIsShareModalOpen(true)}
-                icon={RiShareLine}
-                tooltip="Share Document"
-              />
-            </div>
-          )}
+            <>
+              <div className="flex items-center gap-1 border-r pr-2">
+                <MenuButton
+                  onClick={() => editor.chain().focus().undo().run()}
+                  icon={RiArrowGoBackLine}
+                  tooltip="Undo"
+                />
+                <MenuButton
+                  onClick={() => editor.chain().focus().redo().run()}
+                  icon={RiArrowGoForwardLine}
+                  tooltip="Redo"
+                />
+              </div>
 
-          
+              <div className="flex items-center gap-1 border-r pr-2">
+                <select
+                  onChange={(e) => toggleHeading(e.target.value)}
+                  value={
+                    editor?.isActive('heading', { level: 1 })
+                      ? '1'
+                      : editor?.isActive('heading', { level: 2 })
+                      ? '2'
+                      : editor?.isActive('heading', { level: 3 })
+                      ? '3'
+                      : 'paragraph'
+                  }
+                  className="p-1 border rounded bg-white"
+                >
+                  <option value="paragraph">Normal</option>
+                  <option value="1">Heading 1</option>
+                  <option value="2">Heading 2</option>
+                  <option value="3">Heading 3</option>
+                </select>
+              </div>
+
+              <div className="flex items-center gap-1 border-r pr-2">
+                <MenuButton
+                  onClick={() => editor.chain().focus().toggleBold().run()}
+                  isActive={editor.isActive('bold')}
+                  icon={RiBold}
+                  tooltip="Bold"
+                />
+                <MenuButton
+                  onClick={() => editor.chain().focus().toggleItalic().run()}
+                  isActive={editor.isActive('italic')}
+                  icon={RiItalic}
+                  tooltip="Italic"
+                />
+                <MenuButton
+                  onClick={() => editor.chain().focus().toggleUnderline().run()}
+                  isActive={editor.isActive('underline')}
+                  icon={RiUnderline}
+                  tooltip="Underline"
+                />
+              </div>
+
+              <div className="flex items-center gap-1 border-r pr-2">
+                <MenuButton
+                  onClick={() => editor.chain().focus().setTextAlign('left').run()}
+                  isActive={editor.isActive({ textAlign: 'left' })}
+                  icon={RiAlignLeft}
+                  tooltip="Align Left"
+                />
+                <MenuButton
+                  onClick={() => editor.chain().focus().setTextAlign('center').run()}
+                  isActive={editor.isActive({ textAlign: 'center' })}
+                  icon={RiAlignCenter}
+                  tooltip="Align Center"
+                />
+                <MenuButton
+                  onClick={() => editor.chain().focus().setTextAlign('right').run()}
+                  isActive={editor.isActive({ textAlign: 'right' })}
+                  icon={RiAlignRight}
+                  tooltip="Align Right"
+                />
+                <MenuButton
+                  onClick={() => editor.chain().focus().setTextAlign('justify').run()}
+                  isActive={editor.isActive({ textAlign: 'justify' })}
+                  icon={RiAlignJustify}
+                  tooltip="Justify"
+                />
+              </div>
+
+              <div className="flex items-center gap-1 border-r pr-2">
+                <MenuButton
+                  onClick={() => editor.chain().focus().toggleBulletList().run()}
+                  isActive={editor.isActive('bulletList')}
+                  icon={RiListUnordered}
+                  tooltip="Bullet List"
+                />
+                <MenuButton
+                  onClick={() => editor.chain().focus().toggleOrderedList().run()}
+                  isActive={editor.isActive('orderedList')}
+                  icon={RiListOrdered}
+                  tooltip="Numbered List"
+                />
+              </div>
+
+              <MenuButton
+                onClick={() => editor.chain().focus().clearNodes().unsetAllMarks().run()}
+                icon={RiFormatClear}
+                tooltip="Clear Formatting"
+              />
+
+              {userRole === 'author' && (
+                <div className="bg-red-500 flex items-center gap-1 border-l rounded-lg hover:bg-red-400">
+                  <MenuButton
+                    onClick={() => setIsShareModalOpen(true)}
+                    icon={RiShareLine}
+                    tooltip="Share Document"
+                  />
+                </div>
+              )}
+
+              {userRole === 'author' && (
+                <div className="flex items-center gap-1 border-l pl-2">
+                  <MenuButton
+                    onClick={() => setIsFeedbackModalOpen(true)}
+                    icon={RiMessage2Line}
+                    tooltip="View Reader Feedback"
+                  />
+                </div>
+              )}
+            </>
+          )}
         </div>
 
         <div 
-          className="border rounded-lg overflow-hidden bg-white"
+          className="border rounded-lg overflow-hidden bg-white mb-4"
           onClick={() => editor?.chain().focus().run()}
         >
           <EditorContent 
@@ -302,6 +321,53 @@ function TextEditor() {
             className="prose max-w-none min-h-[calc(100vh-200px)] p-4"
           />
         </div>
+
+        <AnimatePresence>
+          {isFeedbackModalOpen && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center"
+            >
+              <motion.div
+                initial={{ scale: 0.95 }}
+                animate={{ scale: 1 }}
+                exit={{ scale: 0.95 }}
+                className="bg-white rounded-lg w-full max-w-2xl max-h-[80vh] overflow-y-auto m-4"
+              >
+                <div className="p-6">
+                  <div className="flex justify-between items-center mb-4">
+                    <h2 className="text-2xl font-bold">Reader Feedback</h2>
+                    <button
+                      onClick={() => setIsFeedbackModalOpen(false)}
+                      className="text-gray-500 hover:text-gray-700"
+                    >
+                      ×
+                    </button>
+                  </div>
+                  <Feedback
+                    documentId={documentId}
+                    userId={JSON.parse(localStorage.getItem('user'))?._id}
+                    userRole={userRole}
+                    isModal={true}
+                  />
+                </div>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {userRole === 'reader' && (
+          <div className="mt-8">
+            <Feedback 
+              documentId={documentId}
+              userId={JSON.parse(localStorage.getItem('user'))?._id}
+              userRole={userRole}
+              isModal={false}
+            />
+          </div>
+        )}
 
         <ShareModal
           isOpen={isShareModalOpen}

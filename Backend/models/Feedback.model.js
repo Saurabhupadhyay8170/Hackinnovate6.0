@@ -6,6 +6,7 @@ const FeedbackSchema = new mongoose.Schema(
     vote: { type: Number, required: true }, // e.g., a rating from 1 to 5
     suggestion: { type: String, default: "" },
     user: { type: mongoose.Schema.Types.ObjectId, ref: "User", default: null },
+    username: { type: String, default: "" },
   },
   { timestamps: true }
 );

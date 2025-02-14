@@ -42,11 +42,10 @@ function Navbar() {
 
   return (
     <nav 
-      className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ease-in-out
-        ${visible ? 'translate-y-0' : '-translate-y-full'}`}
+      className={`fixed top-0 left-0 right-0 z-[1000] transition-all duration-300 ease-in-out`}
     >
       {/* Main Navbar with semi-transparent background */}
-      <div className="bg-colPink/70 backdrop-blur-sm">
+      <div className="bg-[#FF1F79]/70 backdrop-blur-sm shadow-md">
         <div className="w-[90%] mx-auto sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             {/* Logo - fully opaque */}

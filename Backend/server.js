@@ -6,7 +6,7 @@ import dotenv from 'dotenv';
 import { Server } from 'socket.io';
 import authRoutes from './routes/auth.js';
 import documentsRoutes from './routes/documents.js';
-import Document from './models/Document.js';
+import { nanoid } from 'nanoid';
 
 dotenv.config();
 

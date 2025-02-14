@@ -1,5 +1,6 @@
 import express from 'express';
 import Document from '../models/Document.js';
+import UserFiles from '../models/UserFiles.js';
 import { nanoid } from 'nanoid';
 import auth from '../middleware/auth.js';
 
@@ -8,24 +9,32 @@ const router = express.Router();
 // Create new document
 router.post('/create', auth, async (req, res) => {
   try {
-    console.log('User from auth middleware:', req.user); // Debug log
-
     if (!req.user || !req.user._id) {
-      return res.status(401).json({ message: 'User not authenticated or invalid user ID' });
+      return res.status(401).json({ message: 'User not authenticated' });
     }
 
     const documentId = nanoid(16);
     const document = new Document({
       documentId,
-      owner: req.user._id, // Use _id from auth middleware
+      author: req.user._id,
       title: 'Untitled Document',
-      content: ''
+      content: '',
+      editorAccess: [],
+      reviewerAccess: [],
+      readerAccess: []
     });
     
-    console.log('Document before save:', document); // Debug log
-    
     const savedDoc = await document.save();
-    console.log('Saved document:', savedDoc); // Debug log
+
+    // Update or create UserFiles document
+    await UserFiles.findOneAndUpdate(
+      { userId: req.user._id },
+      { 
+        $push: { filesCreated: savedDoc._id },
+        $setOnInsert: { userId: req.user._id }
+      },
+      { upsert: true, new: true }
+    );
     
     res.status(201).json({ 
       documentId: savedDoc.documentId,
@@ -37,6 +46,35 @@ router.post('/create', auth, async (req, res) => {
       message: 'Error creating document',
       error: error.message 
     });
+  }
+});
+
+// Get recent documents
+router.get('/recent', auth, async (req, res) => {
+  try {
+    const userFiles = await UserFiles.findOne({ userId: req.user._id })
+      .populate({
+        path: 'filesCreated',
+        options: { sort: { 'lastModified': -1 } },
+        limit: 10
+      });
+
+    if (!userFiles) {
+      return res.json({ documents: [] });
+    }
+
+    const documents = userFiles.filesCreated.map(doc => ({
+      _id: doc._id,
+      documentId: doc.documentId,
+      title: doc.title,
+      createdAt: doc.createdAt,
+      updatedAt: doc.lastModified
+    }));
+
+    res.json({ documents });
+  } catch (error) {
+    console.error('Error fetching recent documents:', error);
+    res.status(500).json({ message: 'Error fetching recent documents' });
   }
 });
 

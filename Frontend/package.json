@@ -10,6 +10,10 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@liveblocks/client": "^2.18.1",
+    "@liveblocks/react": "^2.18.1",
+    "@liveblocks/react-tiptap": "^2.18.1",
+    "@liveblocks/react-ui": "^2.18.1",
     "@react-oauth/google": "^0.12.1",
     "@tailwindcss/typography": "^0.5.16",
     "@tiptap/extension-color": "^2.11.5",
@@ -21,8 +25,10 @@
     "appwrite": "^17.0.0",
     "axios": "^1.7.9",
     "clsx": "^2.1.1",
+    "codemirror": "^5.65.18",
     "framer-motion": "^12.4.2",
     "jwt-decode": "^4.0.0",
+    "liveblocks": "^0.0.3",
     "lodash": "^4.17.21",
     "lucide-react": "^0.475.0",
     "motion": "^12.4.2",
@@ -30,7 +36,12 @@
     "react-dom": "^19.0.0",
     "react-icons": "^5.4.0",
     "react-router-dom": "^7.1.5",
-    "tailwind-merge": "^3.0.1"
+    "socket.io-client": "^4.8.1",
+    "socket.io-client": "^4.8.1",
+    "tailwind-merge": "^3.0.1",
+    "y-codemirror": "^3.0.1",
+    "y-websocket": "^2.1.0",
+    "yjs": "^13.6.23"
   },
   "devDependencies": {
     "@eslint/js": "^9.19.0",

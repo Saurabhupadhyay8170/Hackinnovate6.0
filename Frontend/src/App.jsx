@@ -5,6 +5,8 @@ import Dashboard from "./Pages/Dashboard.jsx";
 import Home from "./Pages/Home.jsx";
 import Login from "./Pages/Login.jsx";
 import TextEditor from "./Components/TextEditor/TextEditor.jsx";
+import Room from "./Components/Room.jsx";
+
 import NotFound from "./Pages/NotFound.jsx";
 import ProtectedRoute from './middleware/ProtectedRoute';
 

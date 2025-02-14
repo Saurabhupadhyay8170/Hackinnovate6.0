@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { throttle } from 'lodash/function';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
@@ -14,6 +15,9 @@ import {
 } from 'react-icons/ri';
 import api from '../../utils/api';
 import ShareModal from '../ShareModal/ShareModal';
+import { io } from "socket.io-client";
+
+const socket = io("http://localhost:4000");
 
 function TextEditor() {
   const { documentId } = useParams();
@@ -23,7 +27,19 @@ function TextEditor() {
   const [saveStatus, setSaveStatus] = useState({ status: 'saved', message: 'All changes saved' });
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const [userRole, setUserRole] = useState(null);
+  const [documentContent, setDocumentContent] = useState('');
+  const [activeUsers, setActiveUsers] = useState(new Map());
+  const [localUser] = useState(() => {
+    const user = JSON.parse(localStorage.getItem('user'));
+    return {
+      _id: user._id,
+      name: user.name,
+    };
+  });
+  const [userCursor, setUserCursor] = useState({ x: 0, y: 0 });
+  const colors = ['#FF0000', '#00FF00', '#0000FF', '#FFA500', '#800080']; // Cursor colors
 
+  // Move editor initialization before the useEffect
   const editor = useEditor({
     extensions: [
       StarterKit.configure({
@@ -36,14 +52,74 @@ function TextEditor() {
         types: ['heading', 'paragraph']
       }),
     ],
-    content: '',
+    content: documentContent,
     autofocus: true,
     editable: false,
     onUpdate: ({ editor }) => {
       const content = editor.getHTML();
       handleContentChange(content);
+      // Emit changes to other users
+      socket.emit("send-changes", content);
+    },
+    onSelectionUpdate: ({ editor }) => {
+      const { from, to } = editor.state.selection;
+      if (from !== to) {
+        socket.emit('selection-change', {
+          documentId,
+          selection: { from, to },
+          user: JSON.parse(localStorage.getItem('user'))
+        });
+      }
     },
   });
+
+  // Socket.IO effect
+  useEffect(() => {
+    if (!documentId || !editor) return;
+
+    // Join document with user info
+    socket.emit('join-document', {
+      documentId,
+      user: localUser
+    });
+
+    // Handle initial document load
+    socket.on('load-document', (data) => {
+      editor.commands.setContent(data.content);
+      setActiveUsers(new Map(data.users.map(user => [user.id, user])));
+    });
+
+    // Handle real-time content updates
+    socket.on('receive-changes', (update) => {
+      if (update.userId !== localUser._id) {
+        editor.commands.setContent(update.content);
+      }
+    });
+
+    // Handle cursor updates
+    socket.on('cursor-update', ({ userId, position, color, name, selection }) => {
+      setActiveUsers(prev => {
+        const next = new Map(prev);
+        const user = next.get(userId) || { id: userId, name };
+        next.set(userId, { 
+          ...user, 
+          position,
+          color,
+          selection,
+          lastActive: Date.now()
+        });
+        return next;
+      });
+    });
+
+    // Cleanup on unmount
+    return () => {
+      socket.off('load-document');
+      socket.off('receive-changes');
+      socket.off('cursor-update');
+      socket.emit('leave-document', { documentId, userId: localUser._id });
+    };
+  }, [documentId, editor, localUser]);
 
   const handleContentChange = useCallback((content) => {
     setSaving(true);
@@ -189,6 +265,200 @@ function TextEditor() {
     } catch (error) {
       throw new Error(error.response?.data?.message || 'Error sharing document');
     }
+  };
+
+  useEffect(() => {
+    if (!documentId || !editor) return;
+
+    let updateTimeout;
+    
+    const handleUpdate = () => {
+      clearTimeout(updateTimeout);
+      updateTimeout = setTimeout(() => {
+        const content = editor.getHTML();
+        socket.emit('send-changes', {
+          documentId,
+          content
+        });
+      }, 10); // Reduced delay for faster updates
+    };
+
+    editor.on('update', handleUpdate);
+
+    socket.on('receive-changes', (update) => {
+      if (update.userId !== localUser._id) {
+        requestAnimationFrame(() => {
+          editor.commands.setContent(update.content);
+        });
+      }
+    });
+
+    return () => {
+      editor.off('update', handleUpdate);
+      socket.off('receive-changes');
+      clearTimeout(updateTimeout);
+    };
+  }, [documentId, editor, localUser._id]);
+
+  useEffect(() => {
+    const handleMouseMove = throttle((e) => {
+      const editorContent = document.querySelector('.ProseMirror');
+      if (!editorContent) return;
+
+      const rect = editorContent.getBoundingClientRect();
+      const position = {
+        x: e.clientX - rect.left + editorContent.scrollLeft,
+        y: e.clientY - rect.top + editorContent.scrollTop
+      };
+
+      requestAnimationFrame(() => {
+        socket.emit('cursor-move', {
+          documentId,
+          position,
+          userId: localUser._id,
+          selection: getSelectionRect(editorContent)
+        });
+      });
+    }, 16); // 60fps update rate
+
+    const getSelectionRect = (editorContent) => {
+      const selection = window.getSelection();
+      if (!selection.rangeCount) return null;
+
+      const range = selection.getRangeAt(0);
+      const rect = range.getBoundingClientRect();
+      const editorRect = editorContent.getBoundingClientRect();
+
+      return {
+        left: rect.left - editorRect.left + editorContent.scrollLeft,
+        top: rect.top - editorRect.top + editorContent.scrollTop,
+        width: rect.width,
+        height: rect.height
+      };
+    };
+
+    const editorContent = document.querySelector('.ProseMirror');
+    if (editorContent) {
+      editorContent.addEventListener('mousemove', handleMouseMove);
+      editorContent.addEventListener('keyup', handleMouseMove);
+      editorContent.addEventListener('click', handleMouseMove);
+      editorContent.addEventListener('scroll', handleMouseMove);
+    }
+
+    return () => {
+      if (editorContent) {
+        editorContent.removeEventListener('mousemove', handleMouseMove);
+        editorContent.removeEventListener('keyup', handleMouseMove);
+        editorContent.removeEventListener('click', handleMouseMove);
+        editorContent.removeEventListener('scroll', handleMouseMove);
+      }
+    };
+  }, [documentId, localUser._id]);
+
+  const CollaborativeCursor = ({ user }) => {
+    if (!user.position || user.id === localUser._id) return null;
+
+    return (
+      <motion.div
+        initial={{ opacity: 0, scale: 0.8 }}
+        animate={{ opacity: 1, scale: 1 }}
+        exit={{ opacity: 0 }}
+        transition={{ 
+          type: "spring",
+          stiffness: 500,
+          damping: 25
+        }}
+        style={{
+          position: 'absolute',
+          left: user.position.x,
+          top: user.position.y,
+          zIndex: 50,
+          pointerEvents: 'none',
+        }}
+      >
+        {/* Exact Figma cursor design */}
+        <div style={{ position: 'relative' }}>
+          <svg
+            width="20"
+            height="28"
+            viewBox="0 0 20 28"
+            fill="none"
+            xmlns="http://www.w3.org/2000/svg"
+            style={{
+              filter: 'drop-shadow(0 1px 3px rgba(0,0,0,0.15))',
+              transform: 'translate(-4px, -4px)',
+            }}
+          >
+            <path
+              d="M3.16669 2.33398L3.16669 23.334L7.83335 18.834L12.3334 25.834L15.8334 24.0007L11.3334 17.0007L16.8334 17.0007L3.16669 2.33398Z"
+              fill={user.color}
+              stroke="white"
+              strokeWidth="1.5"
+              strokeLinejoin="round"
+              strokeLinecap="round"
+            />
+          </svg>
+
+          {/* Figma-style name tag */}
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{
+              delay: 0.05,
+              type: "spring",
+              stiffness: 500,
+              damping: 30
+            }}
+            style={{
+              position: 'absolute',
+              left: '20px',
+              top: '-8px',
+              background: user.color,
+              color: 'white',
+              padding: '4px 8px',
+              borderRadius: '4px',
+              fontSize: '12px',
+              fontWeight: '500',
+              lineHeight: '1.2',
+              whiteSpace: 'nowrap',
+              boxShadow: '0 1px 3px rgba(0,0,0,0.12)',
+              transform: 'translateY(-100%)',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '4px',
+            }}
+          >
+            <div
+              style={{
+                width: '4px',
+                height: '4px',
+                borderRadius: '50%',
+                background: 'white',
+                opacity: 0.7
+              }}
+            />
+            {user.name}
+          </motion.div>
+
+          {/* Figma-style selection highlight */}
+          {user.selection && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.1 }}
+              style={{
+                position: 'absolute',
+                background: `${user.color}15`,
+                border: `1.5px solid ${user.color}40`,
+                borderRadius: '2px',
+                ...user.selection,
+                pointerEvents: 'none',
+              }}
+            />
+          )}
+        </div>
+      </motion.div>
+    );
   };
 
   return (
@@ -355,7 +625,7 @@ function TextEditor() {
         </div>
 
         <div 
-          className={`border rounded-lg overflow-hidden bg-white ${
+          className={`border rounded-lg overflow-hidden bg-white relative ${
             userRole === 'reader' || userRole === 'reviewer' ? 'cursor-default' : 'cursor-text'
           }`}
           onClick={() => editor?.chain().focus().run()}
@@ -366,6 +636,12 @@ function TextEditor() {
               userRole === 'reader' || userRole === 'reviewer' ? 'select-text' : ''
             }`}
           />
+          {Array.from(activeUsers.values()).map(user => (
+            <CollaborativeCursor
+              key={user.id}
+              user={user}
+            />
+          ))}
         </div>
 
         <ShareModal

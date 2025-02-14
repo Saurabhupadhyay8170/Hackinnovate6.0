@@ -59,7 +59,7 @@ function Navbar() {
   }, [location]);
 
   // Prevent scroll when mobile menu is open
-  useEffect(() => {
+  useEffect(() => { 
     if (isOpen) {
       document.body.style.overflow = 'hidden';
     } else {

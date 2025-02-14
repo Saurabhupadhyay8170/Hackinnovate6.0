@@ -116,15 +116,40 @@ const Dashboard = () => {
   };
 
   const formatDate = (dateString) => {
-    const date = new Date(dateString);
-    const now = new Date();
+    // Convert to IST by adding 5 hours and 30 minutes
+    const date = new Date(new Date(dateString).getTime() - (5.5 * 60 * 60 * 1000));
+    const now = new Date(new Date().getTime());
     const diffTime = Math.abs(now - date);
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    const diffHours = Math.floor(diffTime / (1000 * 60 * 60));
+    const diffDays = Math.floor(diffHours / 24);
+    const diffWeeks = Math.floor(diffDays / 7);
 
-    if (diffDays === 1) return 'Yesterday';
-    if (diffDays < 7) return `${diffDays} days ago`;
-    if (diffDays < 30) return `${Math.floor(diffDays / 7)} weeks ago`;
-    return date.toLocaleDateString();
+    if (diffHours < 1) {
+      const diffMinutes = Math.floor(diffTime / (1000 * 60));
+      return diffMinutes < 1 ? 'Just now' : `${diffMinutes} minutes ago`;
+    }
+    
+    if (diffHours < 24) {
+      return `${diffHours} ${diffHours === 1 ? 'hour' : 'hours'} ago`;
+    }
+    
+    if (diffDays < 7) {
+      return diffDays === 1 ? 'Yesterday' : `${diffDays} days ago`;
+    }
+    
+    if (diffDays < 30) {
+      return `${diffWeeks} ${diffWeeks === 1 ? 'week' : 'weeks'} ago`;
+    }
+    
+    return date.toLocaleDateString('en-IN', {
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric',
+      hour: 'numeric',
+      minute: 'numeric',
+      hour12: true,
+      timeZone: 'Asia/Kolkata'
+    });
   };
 
   const containerVariants = {
@@ -242,7 +267,7 @@ const Dashboard = () => {
                   <div>
                     <h3 className="font-medium text-sky-900">{doc.title || 'Untitled Document'}</h3>
                     <p className="text-sm text-sky-600">
-                      {formatDate(doc.updatedAt || doc.createdAt)}
+                      opened {formatDate(doc.updatedAt || doc.createdAt)}
                     </p>
                   </div>
                 </div>

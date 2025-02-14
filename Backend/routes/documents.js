@@ -4,8 +4,14 @@ import UserFiles from '../models/UserFiles.js';
 import { nanoid } from 'nanoid';
 import auth from '../middleware/auth.js';
 import User from '../models/User.js';
+import { sendShareEmail } from '../config/nodemailer.js';
 
 const router = express.Router();
+
+// Helper function to get current IST time
+const getCurrentISTTime = () => {
+  return new Date(new Date().getTime() + (5.5 * 60 * 60 * 1000)); // Add 5:30 hours for IST
+};
 
 // Create new document
 router.post('/create', auth, async (req, res) => {
@@ -22,7 +28,9 @@ router.post('/create', auth, async (req, res) => {
       content: '',
       editorAccess: [],
       reviewerAccess: [],
-      readerAccess: []
+      readerAccess: [],
+      createdAt: getCurrentISTTime(),
+      lastModified: getCurrentISTTime()
     });
     
     const savedDoc = await document.save();
@@ -140,7 +148,7 @@ router.put('/:documentId', auth, async (req, res) => {
         $set: { 
           title, 
           content,
-          lastModified: new Date()
+          lastModified: getCurrentISTTime()
         } 
       },
       { new: true }
@@ -204,7 +212,8 @@ router.post('/:documentId/share', auth, async (req, res) => {
         return res.status(400).json({ message: 'Invalid access level' });
     }
 
-    // Save the document
+    // Update lastModified when sharing
+    document.lastModified = getCurrentISTTime();
     await document.save();
 
     // Update UserFiles for the shared user
@@ -219,6 +228,15 @@ router.post('/:documentId/share', auth, async (req, res) => {
       await userFiles.save();
     }
 
+    // Send email notification
+    await sendShareEmail(
+      email,
+      document.title,
+      req.user.name,
+      accessLevel,
+      document.documentId
+    );
+
     res.json({ 
       message: `Document shared with ${email} as ${accessLevel}`,
       document
@@ -230,6 +248,33 @@ router.post('/:documentId/share', auth, async (req, res) => {
       message: 'Error sharing document',
       error: error.message 
     });
+  }
+});
+
+// Get document users
+router.get('/:documentId/users', auth, async (req, res) => {
+  try {
+    const document = await Document.findOne({ documentId: req.params.documentId })
+      .populate('author', 'name email')
+      .populate('editorAccess', 'name email')
+      .populate('reviewerAccess', 'name email')
+      .populate('readerAccess', 'name email');
+
+    if (!document) {
+      return res.status(404).json({ message: 'Document not found' });
+    }
+
+    const users = [
+      { ...document.author.toObject(), role: 'Author' },
+      ...document.editorAccess.map(user => ({ ...user.toObject(), role: 'Editor' })),
+      ...document.reviewerAccess.map(user => ({ ...user.toObject(), role: 'Reviewer' })),
+      ...document.readerAccess.map(user => ({ ...user.toObject(), role: 'Reader' }))
+    ];
+
+    res.json({ users });
+  } catch (error) {
+    console.error('Error fetching document users:', error);
+    res.status(500).json({ message: 'Error fetching document users' });
   }
 });
 

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { throttle } from 'lodash/function';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
@@ -14,6 +15,9 @@ import {
 import api from '../../utils/api';
 import ShareModal from '../ShareModal/ShareModal';
 import Feedback from '../Feedback/Feedback';
+import { io } from "socket.io-client";
+
+const socket = io("http://localhost:4000");
 
 function TextEditor() {
   const { documentId } = useParams();
@@ -24,7 +28,12 @@ function TextEditor() {
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const [userRole, setUserRole] = useState(null);
   const [isFeedbackModalOpen, setIsFeedbackModalOpen] = useState(false);
+  const [documentContent, setDocumentContent] = useState('');
+  const [activeUsers, setActiveUsers] = useState([]);
+  const [userCursor, setUserCursor] = useState({ x: 0, y: 0 });
+  const colors = ['#FF0000', '#00FF00', '#0000FF', '#FFA500', '#800080']; // Cursor colors
 
+  // Move editor initialization before the useEffect
   const editor = useEditor({
     extensions: [
       StarterKit.configure({
@@ -37,16 +46,68 @@ function TextEditor() {
         types: ['heading', 'paragraph']
       }),
     ],
-    content: '',
+    content: documentContent,
     autofocus: true,
     editable: userRole === 'author',
     onUpdate: ({ editor }) => {
-      if (userRole === 'author') {
-        const content = editor.getHTML();
-        handleContentChange(content);
+      const content = editor.getHTML();
+      handleContentChange(content);
+      // Emit changes to other users
+      socket.emit("send-changes", content);
+    },
+    onSelectionUpdate: ({ editor }) => {
+      const { from, to } = editor.state.selection;
+      if (from !== to) {
+        socket.emit('selection-change', {
+          documentId,
+          selection: { from, to },
+          user: JSON.parse(localStorage.getItem('user'))
+        });
       }
     },
   });
+
+  // Socket.IO effect
+  useEffect(() => {
+    if (!documentId || !editor) return;
+
+    // Join the document room
+    socket.emit('join-document', documentId);
+
+    // Load document from server
+    socket.on("load-document", (document) => {
+      setDocumentContent(document);
+      editor.commands.setContent(document);
+    });
+
+    // Listen for incoming changes
+    socket.on("receive-changes", (newContent) => {
+      // Only update if the content is different to prevent loops
+      if (newContent !== editor.getHTML()) {
+        editor.commands.setContent(newContent);
+      }
+    });
+
+    socket.on('selection-update', ({ user, selection }) => {
+      setActiveUsers(prevUsers => {
+        const newUsers = [...prevUsers];
+        const userIndex = newUsers.findIndex(u => u.userId === user._id);
+        
+        if (userIndex !== -1) {
+          newUsers[userIndex].selection = selection;
+        }
+        
+        return newUsers;
+      });
+    });
+
+    return () => {
+      socket.off("receive-changes");
+      socket.off("load-document");
+      socket.emit('leave-document', documentId);
+      socket.off('selection-update');
+    };
+  }, [documentId, editor]);
 
   const handleContentChange = useCallback((content) => {
     setSaving(true);
@@ -162,6 +223,171 @@ function TextEditor() {
       throw new Error(error.response?.data?.message || 'Error sharing document');
     }
   };
+
+  useEffect(() => {
+    const handleMouseMove = throttle((e) => {
+      const editorContent = document.querySelector('.ProseMirror');
+      if (!editorContent) return;
+      
+      const rect = editorContent.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const y = e.clientY - rect.top;
+      
+      // Only emit if position has changed significantly
+      if (Math.abs(x - userCursor.x) > 5 || Math.abs(y - userCursor.y) > 5) {
+        setUserCursor({ x, y });
+        socket.emit('cursor-move', {
+          documentId,
+          position: { x, y },
+          user: JSON.parse(localStorage.getItem('user'))
+        });
+      }
+    }, 50); // Throttle to 50ms for smooth performance
+
+    const editorContent = document.querySelector('.ProseMirror');
+    if (editorContent) {
+      editorContent.addEventListener('mousemove', handleMouseMove);
+    }
+
+    return () => {
+      if (editorContent) {
+        editorContent.removeEventListener('mousemove', handleMouseMove);
+      }
+    };
+  }, [documentId, userCursor]);
+
+  useEffect(() => {
+    // Handle new user joining
+    socket.on('user-joined', (users) => {
+      setActiveUsers(users);
+    });
+
+    // Handle user cursor updates
+    socket.on('cursor-update', (userData) => {
+      setActiveUsers(prevUsers => {
+        const newUsers = [...prevUsers];
+        const userIndex = newUsers.findIndex(u => u.userId === userData.user._id);
+        
+        if (userIndex !== -1) {
+          newUsers[userIndex].position = userData.position;
+        } else {
+          newUsers.push({
+            userId: userData.user._id,
+            name: userData.user.name,
+            position: userData.position,
+            color: colors[newUsers.length % colors.length]
+          });
+        }
+        
+        return newUsers;
+      });
+    });
+
+    // Handle user leaving
+    socket.on('user-left', (userId) => {
+      setActiveUsers(prevUsers => prevUsers.filter(user => user.userId !== userId));
+    });
+
+    return () => {
+      socket.off('user-joined');
+      socket.off('cursor-update');
+      socket.off('user-left');
+    };
+  }, []);
+
+  const UserCursor = ({ user }) => (
+    <AnimatePresence>
+      <motion.div
+        initial={{ opacity: 0, scale: 0.8 }}
+        animate={{ opacity: 1, scale: 1 }}
+        exit={{ opacity: 0, scale: 0.8 }}
+        transition={{ duration: 0.15 }}
+        style={{
+          position: 'absolute',
+          left: user.position.x,
+          top: user.position.y,
+          pointerEvents: 'none',
+          zIndex: 50,
+        }}
+      >
+        {/* Main cursor */}
+        <svg
+          width="24"
+          height="24"
+          viewBox="0 0 24 24"
+          fill="none"
+          style={{
+            filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.1))',
+            transform: 'translate(-50%, -50%)',
+          }}
+        >
+          <path
+            d="M5.65376 12.3673H5.46026L5.31717 12.4976L0.500002 16.8829L0.500002 1.19841L11.7841 12.3673H5.65376Z"
+            fill={user.color}
+            stroke="white"
+            strokeWidth="1"
+          />
+        </svg>
+
+        {/* User label */}
+        <motion.div
+          initial={{ opacity: 0, y: 10, scale: 0.8 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          transition={{ delay: 0.1 }}
+          style={{
+            position: 'absolute',
+            left: 16,
+            top: 8,
+            background: user.color,
+            padding: '4px 8px',
+            borderRadius: '4px',
+            color: 'white',
+            fontSize: '12px',
+            fontWeight: '500',
+            whiteSpace: 'nowrap',
+            boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+            transform: 'translateY(-50%)',
+          }}
+        >
+          {user.name}
+        </motion.div>
+      </motion.div>
+    </AnimatePresence>
+  );
+
+  const SelectionIndicator = ({ user }) => (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      style={{
+        position: 'absolute',
+        left: 0,
+        background: `${user.color}33`, // Add transparency to the color
+        padding: '0 1px',
+        borderLeft: `2px solid ${user.color}`,
+        height: '1.2em',
+        pointerEvents: 'none',
+      }}
+    >
+      <div
+        style={{
+          position: 'absolute',
+          top: '-1.4em',
+          left: '0',
+          background: user.color,
+          color: 'white',
+          padding: '2px 6px',
+          borderRadius: '3px',
+          fontSize: '10px',
+          whiteSpace: 'nowrap',
+          boxShadow: '0 1px 2px rgba(0,0,0,0.1)',
+        }}
+      >
+        {user.name}
+      </div>
+    </motion.div>
+  );
 
   return (
     <div className="min-h-screen bg-white">
@@ -313,13 +539,19 @@ function TextEditor() {
         </div>
 
         <div 
-          className="border rounded-lg overflow-hidden bg-white mb-4"
+          className="border rounded-lg overflow-hidden bg-white relative"
           onClick={() => editor?.chain().focus().run()}
         >
           <EditorContent 
             editor={editor} 
             className="prose max-w-none min-h-[calc(100vh-200px)] p-4"
           />
+          {activeUsers.map(user => (
+            <React.Fragment key={user.userId}>
+              <UserCursor user={user} />
+              {user.selection && <SelectionIndicator user={user} />}
+            </React.Fragment>
+          ))}
         </div>
 
         <AnimatePresence>

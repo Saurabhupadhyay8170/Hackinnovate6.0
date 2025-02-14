@@ -7,6 +7,7 @@ import { Server } from 'socket.io';
 import authRoutes from './routes/auth.js';
 import documentsRoutes from './routes/documents.js';
 import Document from './models/Document.js';
+import feedbackRoutes from './routes/feedback.routes.js'
 
 dotenv.config();
 
@@ -26,6 +27,7 @@ app.use(express.json());
 
 app.use('/api/auth', authRoutes);
 app.use('/api/documents', documentsRoutes);
+app.use('/api/feedback', feedbackRoutes);
 
 const server = http.createServer(app);
 const io = new Server(server, {

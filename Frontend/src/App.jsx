@@ -1,6 +1,8 @@
 import React from "react";
 import { Routes, Route } from "react-router-dom";
 import Layout from "./Components/Layout/Layout.jsx";
+import Dashboard from "./Pages/Dashboard.jsx";
+import Home from "./Pages/Home.jsx";
 // import { Home } from "./Pages/Home.jsx";
 
 function App() {
@@ -9,7 +11,8 @@ function App() {
   
       <Routes>
         <Route path="/" element={<Layout />}>
-          {/* <Route index element={<Home />} /> */}
+          <Route index element={<Home />} />
+          <Route path="/dashboard" element={<Dashboard />} />
           {/* <Route path="timeline" element={<Timeline />} />
           <Route path="about" element={<About />} />
           <Route path="events" element={<Event />} />

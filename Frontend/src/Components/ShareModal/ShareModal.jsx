@@ -1,13 +1,35 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { RiCloseLine, RiMailLine, RiCheckboxCircleLine } from 'react-icons/ri';
+import api from '../../utils/api';
 
-const ShareModal = ({ isOpen, onClose, onShare, documentTitle }) => {
+const ShareModal = ({ isOpen, onClose, onShare, documentTitle, documentId }) => {
   const [email, setEmail] = useState('');
   const [accessLevel, setAccessLevel] = useState('reader');
   const [isSharing, setIsSharing] = useState(false);
   const [error, setError] = useState('');
   const [isSuccess, setIsSuccess] = useState(false);
+  const [documentUsers, setDocumentUsers] = useState([]);
+  const [senderEmail, setSenderEmail] = useState('');
+
+  useEffect(() => {
+    const fetchDocumentUsers = async () => {
+      if (!documentId) return;
+
+      try {
+        const response = await api.get(`/api/documents/${documentId}/users`);
+        setDocumentUsers(response.data.users);
+        const user = JSON.parse(localStorage.getItem('user'));
+        setSenderEmail(user.email);
+      } catch (error) {
+        console.error('Error fetching document users:', error);
+      }
+    };
+
+    if (isOpen) {
+      fetchDocumentUsers();
+    }
+  }, [isOpen, documentId]);
 
   const handleShare = async (e) => {
     e.preventDefault();
@@ -18,7 +40,8 @@ const ShareModal = ({ isOpen, onClose, onShare, documentTitle }) => {
       await onShare(email, accessLevel);
       setEmail('');
       setIsSuccess(true);
-      // Auto close after 2 seconds of showing success
+      const response = await api.get(`/api/documents/${documentId}/users`);
+      setDocumentUsers(response.data.users);
       setTimeout(() => {
         setIsSuccess(false);
         onClose();
@@ -29,6 +52,19 @@ const ShareModal = ({ isOpen, onClose, onShare, documentTitle }) => {
       setIsSharing(false);
     }
   };
+
+  const UserAvatar = ({ user }) => (
+    <div className="relative group">
+      <div className="w-8 h-8 rounded-full bg-sky-100 flex items-center justify-center text-sky-600 font-medium border border-sky-200">
+        {user.name ? user.name[0].toUpperCase() : user.email[0].toUpperCase()}
+      </div>
+      <div className="absolute -bottom-10 left-1/2 transform -translate-x-1/2 hidden group-hover:block bg-gray-800 text-white text-xs rounded px-2 py-1 whitespace-nowrap">
+        {user.email}
+        <br />
+        <span className="text-gray-300 text-xs">{user.role}</span>
+      </div>
+    </div>
+  );
 
   return (
     <AnimatePresence>
@@ -55,8 +91,8 @@ const ShareModal = ({ isOpen, onClose, onShare, documentTitle }) => {
                 <h3 className="text-xl font-semibold text-gray-800 mb-2">
                   Shared Successfully!
                 </h3>
-                <p className="text-gray-600">
-                  Document has been shared with {email}
+                <p className="text-gray-600 text-center">
+                  Document has been shared by {senderEmail} with {email}
                 </p>
               </motion.div>
             ) : (
@@ -71,6 +107,15 @@ const ShareModal = ({ isOpen, onClose, onShare, documentTitle }) => {
                 <p className="text-gray-600 mb-4">
                   Share "{documentTitle}" with others
                 </p>
+
+                <div className="mb-6">
+                  <h3 className="text-sm font-medium text-gray-700 mb-2">People with access</h3>
+                  <div className="flex flex-wrap gap-2">
+                    {documentUsers.map((user, index) => (
+                      <UserAvatar key={index} user={user} />
+                    ))}
+                  </div>
+                </div>
 
                 <form onSubmit={handleShare}>
                   <div className="mb-4">

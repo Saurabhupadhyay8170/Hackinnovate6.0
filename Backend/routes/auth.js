@@ -6,11 +6,14 @@ const router = express.Router();
 
 router.post('/google-login', async (req, res) => {
   try {
-    const { email, name, picture, sub: googleId } = req.body;
+    const { email, name, picture, googleId, token } = req.body;
 
+    // Validate required fields
     if (!email || !name || !googleId) {
+      console.log('Received data:', req.body); // Debug log
       return res.status(400).json({ 
-        message: 'Missing required fields' 
+        message: 'Missing required fields',
+        received: { email, name, googleId }
       });
     }
 
@@ -36,33 +39,34 @@ router.post('/google-login', async (req, res) => {
       await user.save();
     }
 
-    // Generate JWT token
-    const token = jwt.sign(
+    // Generate JWT token with MongoDB _id
+    const jwtToken = jwt.sign(
       { 
-        userId: user._id, 
-        email: user.email,
-        visitCount: user.visitCount 
+        _id: user._id, // Include MongoDB _id
+        email,
+        name,
+        sub: googleId,
+        picture
       },
       process.env.JWT_SECRET,
       { expiresIn: '7d' }
     );
 
-    res.status(200).json({
-      token,
-      user: {
-        id: user._id,
-        name: user.name,
-        email: user.email,
-        picture: user.picture,
-        visitCount: user.visitCount,
-        lastVisit: user.lastVisit
-      },
+    res.json({
+      token: jwtToken,
+      user: { 
+        id: user._id.toString(), // Send MongoDB _id
+        email, 
+        name, 
+        picture,
+        googleId
+      }
     });
   } catch (error) {
-    console.error('Login error:', error);
+    console.error('Google login error:', error);
     res.status(500).json({ 
-      message: 'Server error',
-      error: process.env.NODE_ENV === 'development' ? error.message : undefined 
+      message: 'Error processing login',
+      error: error.message 
     });
   }
 });

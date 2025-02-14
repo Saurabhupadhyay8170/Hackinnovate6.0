@@ -2,10 +2,13 @@ import React, { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { AiOutlinePlus, AiOutlineFile, AiOutlineFolder } from "react-icons/ai";
 import { MdOutlineDocumentScanner } from "react-icons/md";
+import { useNavigate } from 'react-router-dom';
+import axios from 'axios';
 
 const Dashboard = () => {
   const [hoveredTemplate, setHoveredTemplate] = useState(null);
   const [user] = useState(JSON.parse(localStorage.getItem('user')));
+  const navigate = useNavigate();
 
   const templates = [
     { id: 1, name: "Resume", icon: "📄", description: "Professional resume templates" },
@@ -38,6 +41,46 @@ const Dashboard = () => {
     }
   };
 
+  const handleCreateDocument = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const user = JSON.parse(localStorage.getItem('user'));
+      
+      if (!token || !user) {
+        navigate('/login');
+        return;
+      }
+
+      console.log('Sending request with token:', token); // Debug log
+
+      const response = await axios.post(
+        `${import.meta.env.VITE_API_URL}/api/documents/create`,
+        {}, // Empty body since we'll get user from token
+        {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        }
+      );
+
+      console.log('Response:', response.data); // Debug log
+
+      if (response.data.documentId) {
+        navigate(`/document/d/${response.data.documentId}`);
+      } else {
+        throw new Error('No document ID received');
+      }
+    } catch (error) {
+      console.error('Error creating document:', error);
+      if (error.response?.status === 401) {
+        localStorage.removeItem('token'); // Clear invalid token
+        localStorage.removeItem('user');
+        navigate('/login');
+      }
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-sky-50 to-white p-8">
       {/* Header Section */}
@@ -57,6 +100,7 @@ const Dashboard = () => {
         className="mb-12"
       >
         <motion.button
+          onClick={handleCreateDocument}
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}
           className="bg-sky-600 text-white px-6 py-3 rounded-lg flex items-center gap-2 hover:bg-sky-700 transition-colors shadow-lg hover:shadow-xl"

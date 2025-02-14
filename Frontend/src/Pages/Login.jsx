@@ -2,31 +2,48 @@ import React from 'react';
 import { GoogleLogin } from '@react-oauth/google';
 import { useNavigate } from 'react-router-dom';
 import * as jwt_decode from 'jwt-decode';
+import axios from 'axios';
 
 function Login() {
   const navigate = useNavigate();
 
-  const handleGoogleSuccess = (credentialResponse) => {
+  const handleGoogleSuccess = async (credentialResponse) => {
     try {
-      // Decode the JWT token from Google
       const decoded = jwt_decode.jwtDecode(credentialResponse.credential);
-      
-      // Store user data in localStorage
+
       const userData = {
+        email: decoded.email,
+        name: decoded.name,
+        picture: decoded.picture,
+        googleId: decoded.sub,
+        token: credentialResponse.credential // Adding the original token
+      };
+
+
+      const response = await axios.post(
+        `${import.meta.env.VITE_API_URL}/api/auth/google-login`,
+        userData
+      );
+
+
+      localStorage.setItem('token', response.data.token);
+      localStorage.setItem('user', JSON.stringify({
         name: decoded.name,
         email: decoded.email,
         picture: decoded.picture,
-      };
+      }));
       
-      localStorage.setItem('user', JSON.stringify(userData));
       navigate('/dashboard');
     } catch (error) {
       console.error('Error processing Google login:', error);
+      if (error.response) {
+        console.error('Backend error:', error.response.data); // Debug log
+      }
     }
   };
 
-  const handleGoogleError = () => {
-    console.error('Google login failed');
+  const handleGoogleError = (error) => {
+    console.error('Google login failed:', error);
   };
 
   return (

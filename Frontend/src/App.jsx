@@ -11,7 +11,7 @@ function App() {
         <Route path="/" element={<Layout />}>
           {/* <Route index element={<Home />} /> */}
           {/* <Route path="timeline" element={<Timeline />} />
-          <Route path="about" element={<About />} />
+          <Route path="texteditor" element={<TextEditor />} />
           <Route path="events" element={<Event />} />
           <Route path="contact" element={<Contact />} />
           <Route path="eventdetails/:id" element={<EventDetails />} /> */}

@@ -4,6 +4,7 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import authRoutes from './routes/auth.js';
 import documentsRoutes from './routes/documents.js';
+import { nanoid } from 'nanoid';
 
 dotenv.config();
 

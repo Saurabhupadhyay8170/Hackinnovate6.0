@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { AiOutlinePlus, AiOutlineFile, AiOutlineFolder } from "react-icons/ai";
 import { MdOutlineDocumentScanner } from "react-icons/md";
@@ -8,6 +8,8 @@ import axios from 'axios';
 const Dashboard = () => {
   const [hoveredTemplate, setHoveredTemplate] = useState(null);
   const [user] = useState(JSON.parse(localStorage.getItem('user')));
+  const [recentDocs, setRecentDocs] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
   const navigate = useNavigate();
 
   const templates = [
@@ -17,11 +19,96 @@ const Dashboard = () => {
     { id: 4, name: "Business Letter", icon: "✉️", description: "Formal letter templates" },
   ];
 
-  const recentDocs = [
-    { id: 1, name: "Project Plan 2024", lastModified: "2 days ago" },
-    { id: 2, name: "Meeting Minutes", lastModified: "5 days ago" },
-    { id: 3, name: "Budget Report", lastModified: "1 week ago" },
-  ];
+  // Fetch user's recent documents
+  useEffect(() => {
+    const fetchRecentDocuments = async () => {
+      try {
+        const token = localStorage.getItem('token');
+        if (!token) {
+          navigate('/login');
+          return;
+        }
+
+        const response = await axios.get(
+          `${import.meta.env.VITE_API_URL}/api/documents/recent`,
+          {
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Content-Type': 'application/json'
+            }
+          }
+        );
+
+        setRecentDocs(response.data.documents);
+      } catch (error) {
+        console.error('Error fetching recent documents:', error);
+        if (error.response?.status === 401) {
+          localStorage.removeItem('token');
+          localStorage.removeItem('user');
+          navigate('/login');
+        }
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchRecentDocuments();
+  }, [navigate]);
+
+  const handleCreateDocument = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token || !user) {
+        navigate('/login');
+        return;
+      }
+
+      const response = await axios.post(
+        `${import.meta.env.VITE_API_URL}/api/documents/create`,
+        {}, 
+        {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        }
+      );
+
+      if (response.data.documentId) {
+        // Refresh recent documents after creating a new one
+        const updatedDocsResponse = await axios.get(
+          `${import.meta.env.VITE_API_URL}/api/documents/recent`,
+          {
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Content-Type': 'application/json'
+            }
+          }
+        );
+        setRecentDocs(updatedDocsResponse.data.documents);
+        navigate(`/document/d/${response.data.documentId}`);
+      }
+    } catch (error) {
+      console.error('Error creating document:', error);
+      if (error.response?.status === 401) {
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        navigate('/login');
+      }
+    }
+  };
+
+  const formatDate = (dateString) => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffTime = Math.abs(now - date);
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+    if (diffDays === 1) return 'Yesterday';
+    if (diffDays < 7) return `${diffDays} days ago`;
+    if (diffDays < 30) return `${Math.floor(diffDays / 7)} weeks ago`;
+    return date.toLocaleDateString();
+  };
 
   const containerVariants = {
     hidden: { opacity: 0 },
@@ -41,44 +128,8 @@ const Dashboard = () => {
     }
   };
 
-  const handleCreateDocument = async () => {
-    try {
-      const token = localStorage.getItem('token');
-      const user = JSON.parse(localStorage.getItem('user'));
-      
-      if (!token || !user) {
-        navigate('/login');
-        return;
-      }
-
-      console.log('Sending request with token:', token); // Debug log
-
-      const response = await axios.post(
-        `${import.meta.env.VITE_API_URL}/api/documents/create`,
-        {}, // Empty body since we'll get user from token
-        {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          }
-        }
-      );
-
-      console.log('Response:', response.data); // Debug log
-
-      if (response.data.documentId) {
-        navigate(`/document/d/${response.data.documentId}`);
-      } else {
-        throw new Error('No document ID received');
-      }
-    } catch (error) {
-      console.error('Error creating document:', error);
-      if (error.response?.status === 401) {
-        localStorage.removeItem('token'); // Clear invalid token
-        localStorage.removeItem('user');
-        navigate('/login');
-      }
-    }
+  const handleDocumentClick = (documentId) => {
+    navigate(`/document/d/${documentId}`);
   };
 
   return (
@@ -161,24 +212,33 @@ const Dashboard = () => {
           <AiOutlineFolder className="text-2xl text-sky-600" />
           Recent Documents
         </h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {recentDocs.map((doc) => (
-            <motion.div
-              key={doc.id}
-              variants={itemVariants}
-              whileHover={{ scale: 1.02 }}
-              className="bg-white p-6 rounded-xl shadow-lg hover:shadow-xl transition-all cursor-pointer border border-sky-100"
-            >
-              <div className="flex items-start gap-3">
-                <AiOutlineFile className="text-2xl text-sky-500" />
-                <div>
-                  <h3 className="font-medium text-sky-900">{doc.name}</h3>
-                  <p className="text-sm text-sky-600">{doc.lastModified}</p>
+        {isLoading ? (
+          <div className="text-sky-600">Loading recent documents...</div>
+        ) : recentDocs.length > 0 ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {recentDocs.map((doc) => (
+              <motion.div
+                key={doc._id}
+                variants={itemVariants}
+                whileHover={{ scale: 1.02 }}
+                className="bg-white p-6 rounded-xl shadow-lg hover:shadow-xl transition-all cursor-pointer border border-sky-100"
+                onClick={() => handleDocumentClick(doc.documentId)}
+              >
+                <div className="flex items-start gap-3">
+                  <AiOutlineFile className="text-2xl text-sky-500" />
+                  <div>
+                    <h3 className="font-medium text-sky-900">{doc.title || 'Untitled Document'}</h3>
+                    <p className="text-sm text-sky-600">
+                      {formatDate(doc.updatedAt || doc.createdAt)}
+                    </p>
+                  </div>
                 </div>
-              </div>
-            </motion.div>
-          ))}
-        </div>
+              </motion.div>
+            ))}
+          </div>
+        ) : (
+          <div className="text-sky-600">No recent documents</div>
+        )}
       </motion.div>
     </div>
   );

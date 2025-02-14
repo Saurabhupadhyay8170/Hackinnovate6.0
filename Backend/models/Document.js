@@ -6,11 +6,23 @@ const documentSchema = new mongoose.Schema({
     required: true,
     unique: true
   },
-  owner: {
+  author: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
     required: true
   },
+  editorAccess: [{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User'
+  }],
+  reviewerAccess: [{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User'
+  }],
+  readerAccess: [{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User'
+  }],
   title: {
     type: String,
     default: 'Untitled Document'

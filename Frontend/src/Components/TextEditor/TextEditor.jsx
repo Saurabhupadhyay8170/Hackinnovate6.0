@@ -9,9 +9,10 @@ import {
   RiBold, RiItalic, RiUnderline, RiAlignLeft, RiAlignCenter,
   RiAlignRight, RiAlignJustify, RiFormatClear, RiListOrdered,
   RiListUnordered, RiArrowGoBackLine, RiArrowGoForwardLine,
+  RiShareLine
 } from 'react-icons/ri';
 import api from '../../utils/api';
-import { debounce } from 'lodash';
+import ShareModal from '../ShareModal/ShareModal';
 
 function TextEditor() {
   const { documentId } = useParams();
@@ -19,38 +20,8 @@ function TextEditor() {
   const [saving, setSaving] = useState(false);
   const [title, setTitle] = useState('Untitled Document');
   const [saveStatus, setSaveStatus] = useState({ status: 'saved', message: 'All changes saved' });
-  const [initialContent, setInitialContent] = useState('');
-  const [isLoading, setIsLoading] = useState(true);
-
-  // Fetch document data when component mounts
-  useEffect(() => {
-    const fetchDocument = async () => {
-      if (!documentId) return;
-      
-      try {
-        setIsLoading(true);
-        const response = await api.get(`/api/documents/${documentId}`);
-        const document = response.data;
-        
-        if (document) {
-          setTitle(document.title || 'Untitled Document');
-          setInitialContent(document.content || '');
-          
-          // Update editor content if editor exists
-          if (editor) {
-            editor.commands.setContent(document.content || '');
-          }
-        }
-      } catch (error) {
-        console.error('Error fetching document:', error);
-        setSaveStatus({ status: 'error', message: 'Error loading document' });
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchDocument();
-  }, [documentId]);
+  const [isShareModalOpen, setIsShareModalOpen] = useState(false);
+  const [userRole, setUserRole] = useState(null);
 
   const editor = useEditor({
     extensions: [
@@ -64,7 +35,7 @@ function TextEditor() {
         types: ['heading', 'paragraph']
       }),
     ],
-    content: initialContent,
+    content: '',
     autofocus: true,
     onUpdate: ({ editor }) => {
       const content = editor.getHTML();
@@ -72,64 +43,24 @@ function TextEditor() {
     },
   });
 
-  // Update editor content when initialContent changes
-  useEffect(() => {
-    if (editor && initialContent) {
-      editor.commands.setContent(initialContent);
-    }
-  }, [editor, initialContent]);
+  const handleContentChange = useCallback((content) => {
+    setSaving(true);
+    saveDocument(content);
+  }, []);
 
-  const saveDocument = async (newTitle, newContent) => {
+  const saveDocument = async (content) => {
     try {
-      setSaving(true);
-      setSaveStatus({ status: 'saving', message: 'Saving...' });
-      
-      // Get current content if newContent is not provided
-      const currentContent = newContent || editor?.getHTML() || '';
-      // Get current title if newTitle is not provided
-      const currentTitle = newTitle || title;
-      
       await api.put(`/api/documents/${documentId}`, {
-        title: currentTitle,
-        content: currentContent,
+        title,
+        content,
       });
-      
       setSaveStatus({ status: 'saved', message: 'All changes saved' });
+      setSaving(false);
     } catch (error) {
       console.error('Error saving document:', error);
       setSaveStatus({ status: 'error', message: 'Error saving' });
-    } finally {
-      setSaving(false);
     }
   };
-
-  // Create debounced save function
-  const debouncedSave = useCallback(
-    debounce(async (newTitle, newContent) => {
-      await saveDocument(newTitle, newContent);
-    }, 1000),
-    [documentId, title]
-  );
-
-  // Handle content changes
-  const handleContentChange = useCallback((content) => {
-    debouncedSave(title, content);
-  }, [debouncedSave, title]);
-
-  // Handle title changes
-  const handleTitleChange = useCallback((newTitle) => {
-    setTitle(newTitle);
-    const currentContent = editor?.getHTML() || '';
-    debouncedSave(newTitle, currentContent);
-  }, [debouncedSave, editor]);
-
-  if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-gray-500">Loading document...</div>
-      </div>
-    );
-  }
 
   // Add heading handler
   const toggleHeading = (level) => {
@@ -157,6 +88,56 @@ function TextEditor() {
     </button>
   );
 
+  useEffect(() => {
+    const fetchDocument = async () => {
+      try {
+        const response = await api.get(`/api/documents/${documentId}`);
+        const document = response.data;
+        console.log(document);
+        
+        if (document) {
+          setTitle(document.title || 'Untitled Document');
+          editor?.commands.setContent(document.content || '');
+          
+          // Get user ID from localStorage
+          const user = JSON.parse(localStorage.getItem('user'));
+          
+          // Determine user's role
+          if (document.author === user._id) {
+            setUserRole('author');
+          } else if (document.editorAccess.includes(user._id)) {
+            setUserRole('editor');
+          } else if (document.reviewerAccess.includes(user._id)) {
+            setUserRole('reviewer');
+          } else {
+            setUserRole('reader');
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching document:', error);
+        if (error.response?.status === 404) {
+          navigate('/dashboard');
+        }
+      }
+    };
+
+    if (documentId) {
+      fetchDocument();
+    }
+  }, [documentId, editor, navigate]);
+
+  const handleShare = async (email, accessLevel) => {
+    try {
+      await api.post(`/api/documents/${documentId}/share`, {
+        email,
+        accessLevel
+      });
+      setSaveStatus({ status: 'saved', message: 'Document shared successfully' });
+    } catch (error) {
+      throw new Error(error.response?.data?.message || 'Error sharing document');
+    }
+  };
+
   return (
     <div className="min-h-screen bg-white">
       <motion.div
@@ -168,7 +149,7 @@ function TextEditor() {
           <input
             type="text"
             value={title}
-            onChange={(e) => handleTitleChange(e.target.value)}
+            onChange={(e) => setTitle(e.target.value)}
             className="w-full text-3xl font-bold p-2 border-none outline-none bg-transparent group-hover:bg-gray-50 rounded transition-colors"
             placeholder="Untitled Document"
           />
@@ -272,6 +253,16 @@ function TextEditor() {
             />
           </div>
 
+          {userRole === 'author' && (
+            <div className="flex items-center gap-1 border-l pl-2">
+              <MenuButton
+                onClick={() => setIsShareModalOpen(true)}
+                icon={RiShareLine}
+                tooltip="Share Document"
+              />
+            </div>
+          )}
+
           <MenuButton
             onClick={() => editor.chain().focus().clearNodes().unsetAllMarks().run()}
             icon={RiFormatClear}
@@ -288,6 +279,13 @@ function TextEditor() {
             className="prose max-w-none min-h-[calc(100vh-200px)] p-4"
           />
         </div>
+
+        <ShareModal
+          isOpen={isShareModalOpen}
+          onClose={() => setIsShareModalOpen(false)}
+          onShare={handleShare}
+          documentTitle={title}
+        />
 
         <motion.div
           initial={{ opacity: 0 }}

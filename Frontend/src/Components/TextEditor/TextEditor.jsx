@@ -62,6 +62,23 @@ function TextEditor() {
     }
   };
 
+  const handleTitleChange = async (newTitle) => {
+    setTitle(newTitle);
+    setSaving(true);
+    try {
+      await api.put(`/api/documents/${documentId}`, {
+        title: newTitle,
+        content: editor?.getHTML() || ''
+      });
+      setSaveStatus({ status: 'saved', message: 'All changes saved' });
+    } catch (error) {
+      console.error('Error saving title:', error);
+      setSaveStatus({ status: 'error', message: 'Error saving' });
+    } finally {
+      setSaving(false);
+    }
+  };
+
   // Add heading handler
   const toggleHeading = (level) => {
     if (!editor) return;
@@ -93,14 +110,15 @@ function TextEditor() {
       try {
         const response = await api.get(`/api/documents/${documentId}`);
         const document = response.data;
-        console.log(document);
+        // console.log(document);
         
         if (document) {
-          setTitle(document.title || 'Untitled Document');
-          editor?.commands.setContent(document.content || '');
-          
-          // Get user ID from localStorage
-          const user = JSON.parse(localStorage.getItem('user'));
+            setTitle(document.title || 'Untitled Document');
+            editor?.commands.setContent(document.content || '');
+            
+            // Get user ID from localStorage
+            const user = JSON.parse(localStorage.getItem('user'));
+            // console.log(user._id);
           
           // Determine user's role
           if (document.author === user._id) {
@@ -112,6 +130,8 @@ function TextEditor() {
           } else {
             setUserRole('reader');
           }
+
+          console.log(userRole);
         }
       } catch (error) {
         console.error('Error fetching document:', error);
@@ -150,6 +170,7 @@ function TextEditor() {
             type="text"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
+            onBlur={(e) => handleTitleChange(e.target.value)}
             className="w-full text-3xl font-bold p-2 border-none outline-none bg-transparent group-hover:bg-gray-50 rounded transition-colors"
             placeholder="Untitled Document"
           />
@@ -253,8 +274,14 @@ function TextEditor() {
             />
           </div>
 
+          <MenuButton
+            onClick={() => editor.chain().focus().clearNodes().unsetAllMarks().run()}
+            icon={RiFormatClear}
+            tooltip="Clear Formatting"
+          />
+
           {userRole === 'author' && (
-            <div className="flex items-center gap-1 border-l pl-2">
+            <div className="bg-red-500 flex items-center gap-1 border-l rounded-lg hover:bg-red-400">
               <MenuButton
                 onClick={() => setIsShareModalOpen(true)}
                 icon={RiShareLine}
@@ -263,11 +290,7 @@ function TextEditor() {
             </div>
           )}
 
-          <MenuButton
-            onClick={() => editor.chain().focus().clearNodes().unsetAllMarks().run()}
-            icon={RiFormatClear}
-            tooltip="Clear Formatting"
-          />
+          
         </div>
 
         <div 

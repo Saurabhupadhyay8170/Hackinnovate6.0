@@ -4,12 +4,15 @@ import { AiOutlinePlus, AiOutlineFile, AiOutlineFolder } from "react-icons/ai";
 import { MdOutlineDocumentScanner } from "react-icons/md";
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import { RiShareLine } from "react-icons/ri";
 
 const Dashboard = () => {
   const [hoveredTemplate, setHoveredTemplate] = useState(null);
   const [user] = useState(JSON.parse(localStorage.getItem('user')));
   const [recentDocs, setRecentDocs] = useState([]);
+  const [sharedDocs, setSharedDocs] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isSharedLoading, setIsSharedLoading] = useState(true);
   const navigate = useNavigate();
 
   const templates = [
@@ -19,9 +22,9 @@ const Dashboard = () => {
     { id: 4, name: "Business Letter", icon: "✉️", description: "Formal letter templates" },
   ];
 
-  // Fetch user's recent documents
+  // Fetch user's documents (both recent and shared)
   useEffect(() => {
-    const fetchRecentDocuments = async () => {
+    const fetchDocuments = async () => {
       try {
         const token = localStorage.getItem('token');
         if (!token) {
@@ -29,19 +32,32 @@ const Dashboard = () => {
           return;
         }
 
-        const response = await axios.get(
-          `${import.meta.env.VITE_API_URL}/api/documents/recent`,
-          {
-            headers: {
-              'Authorization': `Bearer ${token}`,
-              'Content-Type': 'application/json'
+        // Fetch both recent and shared documents
+        const [recentResponse, sharedResponse] = await Promise.all([
+          axios.get(
+            `${import.meta.env.VITE_API_URL}/api/documents/recent`,
+            {
+              headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+              }
             }
-          }
-        );
+          ),
+          axios.get(
+            `${import.meta.env.VITE_API_URL}/api/documents/shared`,
+            {
+              headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+              }
+            }
+          )
+        ]);
 
-        setRecentDocs(response.data.documents);
+        setRecentDocs(recentResponse.data.documents);
+        setSharedDocs(sharedResponse.data.documents);
       } catch (error) {
-        console.error('Error fetching recent documents:', error);
+        console.error('Error fetching documents:', error);
         if (error.response?.status === 401) {
           localStorage.removeItem('token');
           localStorage.removeItem('user');
@@ -49,10 +65,11 @@ const Dashboard = () => {
         }
       } finally {
         setIsLoading(false);
+        setIsSharedLoading(false);
       }
     };
 
-    fetchRecentDocuments();
+    fetchDocuments();
   }, [navigate]);
 
   const handleCreateDocument = async () => {
@@ -126,10 +143,6 @@ const Dashboard = () => {
       y: 0,
       opacity: 1
     }
-  };
-
-  const handleDocumentClick = (documentId) => {
-    navigate(`/document/d/${documentId}`);
   };
 
   return (
@@ -222,7 +235,7 @@ const Dashboard = () => {
                 variants={itemVariants}
                 whileHover={{ scale: 1.02 }}
                 className="bg-white p-6 rounded-xl shadow-lg hover:shadow-xl transition-all cursor-pointer border border-sky-100"
-                onClick={() => handleDocumentClick(doc.documentId)}
+                onClick={() => navigate(`/document/d/${doc.documentId}`)}
               >
                 <div className="flex items-start gap-3">
                   <AiOutlineFile className="text-2xl text-sky-500" />
@@ -238,6 +251,49 @@ const Dashboard = () => {
           </div>
         ) : (
           <div className="text-sky-600">No recent documents</div>
+        )}
+      </motion.div>
+
+      {/* Shared Documents */}
+      <motion.div
+        variants={containerVariants}
+        initial="hidden"
+        animate="visible"
+        className="mb-8"
+      >
+        <h2 className="text-2xl font-semibold mb-6 flex items-center gap-2 text-sky-900">
+          <RiShareLine className="text-2xl text-sky-600" />
+          Shared with me
+        </h2>
+        {isSharedLoading ? (
+          <div className="text-sky-600">Loading shared documents...</div>
+        ) : sharedDocs.length > 0 ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {sharedDocs.map((doc) => (
+              <motion.div
+                key={doc._id}
+                variants={itemVariants}
+                whileHover={{ scale: 1.02 }}
+                className="bg-white p-6 rounded-xl shadow-lg hover:shadow-xl transition-all cursor-pointer border border-sky-100"
+                onClick={() => navigate(`/document/d/${doc.documentId}`)}
+              >
+                <div className="flex items-start gap-3">
+                  <AiOutlineFile className="text-2xl text-sky-500" />
+                  <div>
+                    <h3 className="font-medium text-sky-900">{doc.title || 'Untitled Document'}</h3>
+                    <p className="text-sm text-sky-600">
+                      {formatDate(doc.updatedAt || doc.createdAt)}
+                    </p>
+                    <p className="text-xs text-gray-500 mt-1">
+                      Shared by: {doc.author?.name || 'Unknown'}
+                    </p>
+                  </div>
+                </div>
+              </motion.div>
+            ))}
+          </div>
+        ) : (
+          <div className="text-sky-600">No shared documents</div>
         )}
       </motion.div>
     </div>

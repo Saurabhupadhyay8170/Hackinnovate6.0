@@ -3,7 +3,7 @@ import mongoose from 'mongoose';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import authRoutes from './routes/auth.js';
-import documentsRoutes from './routes/documents.js';
+import documentsRouter from './routes/documents.js';
 import { nanoid } from 'nanoid';
 
 dotenv.config();
@@ -32,7 +32,7 @@ connectDB();
 
 // Routes
 app.use('/api/auth', authRoutes);
-app.use('/api/documents', documentsRoutes);
+app.use('/api/documents', documentsRouter);
 
 // Error handling middleware
 app.use((err, req, res, next) => {
@@ -56,3 +56,5 @@ process.on('unhandledRejection', (err) => {
   // Close server & exit process
   server.close(() => process.exit(1));
 });
+
+export default app;

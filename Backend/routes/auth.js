@@ -54,12 +54,10 @@ router.post('/google-login', async (req, res) => {
 
     res.json({
       token: jwtToken,
-      user: { 
-        id: user._id.toString(), // Send MongoDB _id
-        email, 
-        name, 
-        picture,
-        googleId
+      user: {
+        _id: user._id,  // MongoDB ObjectId
+        name: user.name,
+        email: user.email
       }
     });
   } catch (error) {

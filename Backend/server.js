@@ -1,57 +1,84 @@
 import express from 'express';
+import http from 'http';
 import mongoose from 'mongoose';
 import cors from 'cors';
 import dotenv from 'dotenv';
+import { Server } from 'socket.io';
 import authRoutes from './routes/auth.js';
 import documentsRoutes from './routes/documents.js';
+import Document from './models/Document.js';
 
 dotenv.config();
 
 const app = express();
+const server = http.createServer(app);
+const io = new Server(server, {
+  cors: {
+    origin: "*",
+    methods: ["GET", "POST"],
+  },
+});
 
-// Middleware
-app.use(cors({
-  origin: 'http://localhost:5173', // Frontend URL
-  credentials: true
-}));
+// Connect to MongoDB using the URI from your environment (or fallback to localhost)
+mongoose
+  .connect(process.env.MONGO_URI || "mongodb://127.0.0.1:27017/collab-docs", {
+    useNewUrlParser: true,
+    useUnifiedTopology: true,
+    serverSelectionTimeoutMS: 30000, // Increase timeout if needed
+  })
+  .then(() => {
+    console.log("Connected to MongoDB");
+  })
+  .catch((error) => {
+    console.error("Error connecting to MongoDB:", error);
+  });
+
+app.use(cors());
 app.use(express.json());
+app.use("/api/auth", authRoutes);
+app.use("/api/documents", documentsRoutes);
 
-// MongoDB Connection
-const connectDB = async () => {
-  try {
-    await mongoose.connect(process.env.MONGODB_URI);
-    console.log('Connected to MongoDB');
-  } catch (error) {
-    console.error('MongoDB connection error:', error);
-    process.exit(1);
-  }
-};
+io.on("connection", (socket) => {
+  console.log("A user connected:", socket.id);
 
-connectDB();
+  socket.on("join-document", async ({ documentId }) => {
+    socket.join(documentId);
+    console.log(`User joined document: ${documentId}`);
 
-// Routes
-app.use('/api/auth', authRoutes);
-app.use('/api/documents', documentsRoutes);
+    // Fetch the existing document and send its content to the new user
+    try {
+      const document = await Document.findById(documentId);
+      if (document) {
+        socket.emit("load-document", document.data);
+      }
+    } catch (error) {
+      console.error("Error loading document:", error);
+    }
+  });
 
-// Error handling middleware
-app.use((err, req, res, next) => {
-  console.error(err.stack);
-  res.status(500).json({ message: 'Something went wrong!' });
+  socket.on("send-changes", ({ documentId, content }) => {
+    socket.to(documentId).emit("receive-changes", content);
+  });
+
+  socket.on("cursor-move", ({ documentId, cursorPosition, userId }) => {
+    socket.to(documentId).emit("cursor-update", { cursorPosition, userId });
+  });
+
+  socket.on("save-document", async ({ documentId, content }) => {
+    try {
+      await Document.findByIdAndUpdate(documentId, { data: content });
+      console.log("Document saved:", documentId);
+    } catch (error) {
+      console.error("Error saving document:", error);
+    }
+  });
+
+  socket.on("disconnect", () => {
+    console.log("User disconnected:", socket.id);
+  });
 });
 
-// Basic route for testing
-app.get('/', (req, res) => {
-  res.send('Backend server is running');
-});
-
-const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
-});
-
-// Handle unhandled promise rejections
-process.on('unhandledRejection', (err) => {
-  console.error('Unhandled Promise Rejection:', err);
-  // Close server & exit process
-  server.close(() => process.exit(1));
+const PORT = process.env.PORT || 4000;
+server.listen(PORT, () => {
+  console.log(`Server is running on port ${PORT}`);
 });

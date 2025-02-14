@@ -6,7 +6,6 @@ import Home from "./Pages/Home.jsx";
 import Login from "./Pages/Login.jsx";
 import TextEditor from "./Components/TextEditor/TextEditor.jsx";
 import Room from "./Components/Room.jsx";
-import TextEditor from "./Components/TextEditor/TextEditor.jsx";
 
 
 function App() {

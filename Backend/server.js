@@ -7,7 +7,7 @@ import { Server } from 'socket.io';
 import authRoutes from './routes/auth.js';
 import documentsRoutes from './routes/documents.js';
 import Document from './models/Document.js';
-import http from 'http';
+// import http from 'http';
 import feedbackRoutes from './routes/feedback.routes.js'
 
 dotenv.config();
@@ -157,13 +157,6 @@ app.use('/api/auth', authRoutes);
 app.use('/api/documents', documentsRoutes);
 app.use('/api/feedback', feedbackRoutes);
 
-const server = http.createServer(app);
-const io = new Server(server, {
-  cors: {
-    origin: "*",
-    methods: ["GET", "POST"],
-  },
-});
 
 // Connect to MongoDB using your Atlas URI
 mongoose.connect(process.env.MONGODB_URI, {

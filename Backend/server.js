@@ -6,11 +6,27 @@ import dotenv from 'dotenv';
 import { Server } from 'socket.io';
 import authRoutes from './routes/auth.js';
 import documentsRoutes from './routes/documents.js';
-import { nanoid } from 'nanoid';
+import Document from './models/Document.js';
 
 dotenv.config();
 
 const app = express();
+
+// Set headers to allow cross-window messaging (if needed)
+app.use((req, res, next) => {
+  res.setHeader('Cross-Origin-Opener-Policy', 'same-origin-allow-popups');
+  next();
+});
+
+app.use(cors({
+  origin: '*',
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS']
+}));
+app.use(express.json());
+
+app.use('/api/auth', authRoutes);
+app.use('/api/documents', documentsRoutes);
+
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
@@ -19,24 +35,14 @@ const io = new Server(server, {
   },
 });
 
-// Connect to MongoDB using the URI from your environment (or fallback to localhost)
-mongoose
-  .connect(process.env.MONGO_URI || "mongodb://127.0.0.1:27017/collab-docs", {
-    useNewUrlParser: true,
-    useUnifiedTopology: true,
-    serverSelectionTimeoutMS: 30000, // Increase timeout if needed
-  })
-  .then(() => {
-    console.log("Connected to MongoDB");
-  })
-  .catch((error) => {
-    console.error("Error connecting to MongoDB:", error);
-  });
-
-app.use(cors());
-app.use(express.json());
-app.use("/api/auth", authRoutes);
-app.use("/api/documents", documentsRoutes);
+// Connect to MongoDB using the provided URI
+mongoose.connect(process.env.MONGODB_URI, {
+  useNewUrlParser: true,
+  useUnifiedTopology: true,
+  serverSelectionTimeoutMS: 30000,
+})
+  .then(() => console.log('Connected to MongoDB'))
+  .catch(err => console.error('Error connecting to MongoDB:', err));
 
 io.on("connection", (socket) => {
   console.log("A user connected:", socket.id);
@@ -44,8 +50,6 @@ io.on("connection", (socket) => {
   socket.on("join-document", async ({ documentId }) => {
     socket.join(documentId);
     console.log(`User joined document: ${documentId}`);
-
-    // Fetch the existing document and send its content to the new user
     try {
       const document = await Document.findById(documentId);
       if (document) {
@@ -78,7 +82,7 @@ io.on("connection", (socket) => {
   });
 });
 
-const PORT = process.env.PORT || 4000;
+const PORT = process.env.PORT || 5000;
 server.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
 });

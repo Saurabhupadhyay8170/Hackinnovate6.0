@@ -1,4 +1,4 @@
-import Document from "./models/Document.js"; // Ensure the correct path to your Document model
+import Document from "../models/Document.js"; // Ensure the correct path to your Document model
 
 const defaultData = "";
 
@@ -48,4 +48,4 @@ const updateDocument = async (id, data) => {
   }
 };
 
-export { getAllDocuments, findOrCreateDocument, updateDocument };
+export default { getAllDocuments, findOrCreateDocument, updateDocument };

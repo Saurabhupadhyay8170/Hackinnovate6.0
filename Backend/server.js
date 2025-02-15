@@ -77,39 +77,43 @@ io.on("connection", (socket) => {
   console.log("Client connected:", socket.id);
 
   socket.on('join-document', async ({ documentId, user }) => {
-    socket.join(documentId);
-    
-    // Initialize document's user list
-    if (!activeUsers.has(documentId)) {
-      activeUsers.set(documentId, new Map());
-    }
-    
-    const documentUsers = activeUsers.get(documentId);
-    const userColor = userColors[documentUsers.size % userColors.length];
-
-    // Add user to active users
-    documentUsers.set(user._id, {
-      id: user._id,
-      name: user.name,
-      color: userColor,
-      socketId: socket.id,
-      lastActive: Date.now()
-    });
-
-    // Load document and emit to all users
     try {
-      const document = await Document.findOne({ documentId: documentId });
-      if (document) {
-        // Send document content to joining user
-        socket.emit('load-document', document.data);
-        
-        // Broadcast updated user list to all users in the document
-        io.to(documentId).emit('users-update', 
-          Array.from(documentUsers.values())
-        );
+      if (!documentId || !user?._id) {
+        throw new Error('Document ID and user ID are required');
       }
+
+      socket.join(documentId);
+      
+      // Convert string ID to ObjectId if necessary
+      const userId = mongoose.Types.ObjectId(user._id);
+
+      // Find or create the document
+      let document = await Document.findOne({ documentId });
+      
+      if (!document) {
+        document = await Document.create({
+          documentId,
+          author: userId,
+          title: 'Untitled Document',
+          content: '',
+          createdAt: new Date(),
+          lastModified: new Date()
+        });
+      }
+
+      // Send the document data to the client
+      socket.emit('load-document', {
+        content: document.content,
+        title: document.title,
+        documentId: document.documentId
+      });
+
     } catch (error) {
-      console.error('Error loading document:', error);
+      console.error('Error joining document:', error);
+      socket.emit('error', {
+        message: 'Error loading document',
+        details: error.message
+      });
     }
   });
 
@@ -159,6 +163,58 @@ io.on("connection", (socket) => {
       });
     });
     console.log("Client disconnected:", socket.id);
+  });
+
+  socket.on('save-document', async ({ documentId, content, title, userId }) => {
+    try {
+      if (!documentId) {
+        throw new Error('Document ID is required');
+      }
+
+      console.log('Saving document:', { documentId, contentLength: content?.length, title });
+
+      // Create the document if it doesn't exist, otherwise update it
+      const updatedDoc = await Document.findOneAndUpdate(
+        { documentId },
+        {
+          $set: {
+            title: title || 'Untitled Document',
+            content: content || '',
+            author: userId, // Make sure this is a valid MongoDB ObjectId
+            lastModified: new Date()
+          }
+        },
+        {
+          new: true, // Return the updated document
+          upsert: true, // Create if doesn't exist
+          runValidators: true,
+          setDefaultsOnInsert: true
+        }
+      ).exec(); // Add exec() to properly execute the query
+
+      console.log('Document saved:', updatedDoc);
+
+      // Broadcast the changes to all clients in the room
+      socket.to(documentId).emit('receive-changes', {
+        content: updatedDoc.content,
+        title: updatedDoc.title
+      });
+
+      // Send save confirmation to the sender
+      socket.emit('document-saved', {
+        success: true,
+        documentId: updatedDoc.documentId,
+        content: updatedDoc.content,
+        title: updatedDoc.title
+      });
+
+    } catch (error) {
+      console.error('Error saving document:', error);
+      socket.emit('document-saved', {
+        success: false,
+        error: error.message
+      });
+    }
   });
 });
 

@@ -24,10 +24,10 @@ export default defineConfig({
         secure: false,
       },
       '/socket.io': {
-        target: process.env.VITE_WS_URL || 'http://localhost:5000',
+        target: 'http://localhost:5000',
         changeOrigin: true,
-        secure: false,
         ws: true,
+        secure: false
       },
     },
   },

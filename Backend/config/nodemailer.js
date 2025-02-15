@@ -38,7 +38,7 @@ export const sendShareEmail = async (recipientEmail, documentTitle, senderName, 
     throw new Error('Email credentials are not configured');
   }
 
-  const loginLink = `${process.env.FRONTEND_URL}/document/d/${documentId}`;
+  const loginLink = `https://storymosaic-nine.vercel.app/document/d/${documentId}`;
   
   const mailOptions = {
     from: `"DocCollab" <${process.env.SMTP_USER}>`,

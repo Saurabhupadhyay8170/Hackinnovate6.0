@@ -122,9 +122,10 @@ router.get('/:documentId', auth, async (req, res) => {
     const document = await Document.findOne({ 
       documentId: req.params.documentId 
     }).populate('author', 'name email');
+    console.log(document);
 
     if (!document) {
-      return res.status(404).json({ message: 'Document not found' });
+      return res.status(404).json({ message: 'Document not found', error: error.message });
     }
 
     // Convert document to a plain object to modify it
@@ -171,15 +172,18 @@ router.put('/:documentId', auth, async (req, res) => {
 router.post('/:documentId/share', auth, async (req, res) => {
   try {
     const { email, accessLevel } = req.body;
+    const documentId = req.params.documentId;
     
-    // Find the document
-    const document = await Document.findOne({ documentId: req.params.documentId });
+    // Find the document using documentId field
+    const document = await Document.findOne({ documentId });
+    
     if (!document) {
+      console.log('Document not found:', documentId);
       return res.status(404).json({ message: 'Document not found' });
     }
 
-    // Check if user is the author
-    if (document.author.toString() !== req.user._id) {
+    // Check if user is the author (compare as strings)
+    if (document.author.toString() !== req.user._id.toString()) {
       return res.status(403).json({ message: 'Only the author can share this document' });
     }
 
@@ -189,15 +193,16 @@ router.post('/:documentId/share', auth, async (req, res) => {
       return res.status(404).json({ message: 'User not found' });
     }
 
-    // Check if user already has access
-    const hasEditorAccess = document.editorAccess.includes(userToShare._id);
-    const hasReviewerAccess = document.reviewerAccess.includes(userToShare._id);
-    const hasReaderAccess = document.readerAccess.includes(userToShare._id);
-
-    // Remove user from all access arrays
-    document.editorAccess = document.editorAccess.filter(id => id.toString() !== userToShare._id.toString());
-    document.reviewerAccess = document.reviewerAccess.filter(id => id.toString() !== userToShare._id.toString());
-    document.readerAccess = document.readerAccess.filter(id => id.toString() !== userToShare._id.toString());
+    // Remove user from all access arrays first
+    document.editorAccess = document.editorAccess.filter(id => 
+      id.toString() !== userToShare._id.toString()
+    );
+    document.reviewerAccess = document.reviewerAccess.filter(id => 
+      id.toString() !== userToShare._id.toString()
+    );
+    document.readerAccess = document.readerAccess.filter(id => 
+      id.toString() !== userToShare._id.toString()
+    );
 
     // Add user to appropriate access array
     switch (accessLevel) {
@@ -214,35 +219,23 @@ router.post('/:documentId/share', auth, async (req, res) => {
         return res.status(400).json({ message: 'Invalid access level' });
     }
 
-    // Update lastModified when sharing
-    document.lastModified = getCurrentISTTime();
+    // Save the document
     await document.save();
 
-    // Update UserFiles for the shared user
-    let userFiles = await UserFiles.findOne({ userId: userToShare._id });
-    
-    if (!userFiles) {
-      userFiles = new UserFiles({ userId: userToShare._id });
-    }
+    // Send success response before email
+    res.json({ 
+      message: `Document shared with ${email} as ${accessLevel}`,
+      document
+    });
 
-    if (!userFiles.filesShared.includes(document._id)) {
-      userFiles.filesShared.push(document._id);
-      await userFiles.save();
-    }
-
-    // Send email notification
+    // Send email notification after response
     await sendShareEmail(
       email,
       document.title,
       req.user.name,
       accessLevel,
-      document.documentId
+      documentId
     );
-
-    res.json({ 
-      message: `Document shared with ${email} as ${accessLevel}`,
-      document
-    });
 
   } catch (error) {
     console.error('Error sharing document:', error);

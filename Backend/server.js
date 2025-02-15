@@ -6,73 +6,54 @@ import dotenv from 'dotenv';
 import { Server } from 'socket.io';
 import authRoutes from './routes/auth.js';
 import documentsRoutes from './routes/documents.js';
-import Document from './models/Document.js';
 import feedbackRoutes from './routes/feedback.routes.js';
-import './config/nodemailer.js';
 import templateRoutes from './routes/template.routes.js';
+import Document from './models/Document.js';
+import './config/nodemailer.js';
 
 dotenv.config();
 
 const app = express();
 
-// Set COOP header to allow popups and window.postMessage between same-origin popups
+// ✅ Set up proper CORS to allow frontend access
+const corsOptions = {
+  origin: ["https://storymosaic-nine.vercel.app", "http://localhost:3000"],
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+  credentials: true,
+};
+
+app.use(cors(corsOptions));
+app.options('*', cors(corsOptions)); // Handle preflight requests
+
+// ✅ Fix COOP (Cross-Origin-Opener-Policy) for Google OAuth
 app.use((req, res, next) => {
-  res.setHeader('Cross-Origin-Opener-Policy', 'same-origin-allow-popups');
+  res.setHeader("Cross-Origin-Opener-Policy", "same-origin-allow-popups");
+  res.setHeader("Cross-Origin-Embedder-Policy", "require-corp");
   next();
 });
 
-app.use(cors({
-  origin: ["http://localhost:5173", "http://localhost:3000"],
-  credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS']
-}));
 app.use(express.json());
 
-// Add these at the top level of your server file
+// In-memory storage for active users in documents
 const activeUsers = new Map();
 const userColors = [
-  '#1A73E8', // Google Blue
-  '#FF5733', // Coral
-  '#27AE60', // Emerald
-  '#9B59B6', // Amethyst
-  '#E67E22', // Carrot
-  '#16A085', // Green Sea
-  '#E84393', // Pink
-  '#2980B9', // Belize Hole
-  '#C0392B', // Pomegranate
-  '#8E44AD'  // Wisteria
+  '#1A73E8', '#FF5733', '#27AE60', '#9B59B6', '#E67E22',
+  '#16A085', '#E84393', '#2980B9', '#C0392B', '#8E44AD'
 ];
 
-// MongoDB Connection
-const connectDB = async () => {
-  try {
-    await mongoose.connect(process.env.MONGODB_URI);
-    console.log('Connected to MongoDB');
-  } catch (error) {
-    console.error('MongoDB connection error:', error);
-    process.exit(1);
-  }
-};
-
-connectDB();
-
-// Create HTTP server once
+// Create HTTP and Socket.IO server
 const server = http.createServer(app);
-
-// Create Socket.IO server with CORS configuration
 const io = new Server(server, {
   cors: {
-    origin: ["http://localhost:5173", "http://localhost:3000"], // Allow both development ports
+    origin: [process.env.CORS_ORIGIN, "http://localhost:3000"],
     methods: ["GET", "POST"],
     credentials: true,
     transports: ['websocket', 'polling']
   },
-  allowEIO3: true // Enable compatibility mode
+  allowEIO3: true
 });
 
-// Store document data for each document
-const documents = new Map();
-
+// ✅ Socket.IO connection handling
 io.on("connection", (socket) => {
   console.log("Client connected:", socket.id);
 
@@ -120,27 +101,19 @@ io.on("connection", (socket) => {
   socket.on('send-changes', ({ documentId, content }) => {
     const documentUsers = activeUsers.get(documentId);
     if (!documentUsers) return;
-
-    const user = Array.from(documentUsers.values())
-      .find(u => u.socketId === socket.id);
-
+    const user = Array.from(documentUsers.values()).find(u => u.socketId === socket.id);
     if (user) {
-      socket.to(documentId).emit('receive-changes', {
-        content,
-        userId: user.id
-      });
+      socket.to(documentId).emit('receive-changes', { content, userId: user.id });
     }
   });
 
   socket.on('cursor-move', ({ documentId, position, userId, selection }) => {
     const documentUsers = activeUsers.get(documentId);
     if (!documentUsers || !documentUsers.has(userId)) return;
-
     const user = documentUsers.get(userId);
     user.position = position;
     user.selection = selection;
     user.lastActive = Date.now();
-
     socket.to(documentId).emit('cursor-update', {
       userId,
       position,
@@ -156,9 +129,7 @@ io.on("connection", (socket) => {
         if (user.socketId === socket.id) {
           documentUsers.delete(userId);
           io.to(documentId).emit('user-left', userId);
-          io.to(documentId).emit('users-update', 
-            Array.from(documentUsers.values())
-          );
+          io.to(documentId).emit('users-update', Array.from(documentUsers.values()));
         }
       });
     });
@@ -224,15 +195,13 @@ app.use('/api/documents', documentsRoutes);
 app.use('/api/feedback', feedbackRoutes);
 app.use('/api/templates', templateRoutes);
 
-
-// Connect to MongoDB using your Atlas URI
+// ✅ Connect to MongoDB and start the server
 mongoose.connect(process.env.MONGODB_URI, {
   useNewUrlParser: true,
   useUnifiedTopology: true,
 })
 .then(() => {
   console.log('Connected to MongoDB');
-  // Start server only after MongoDB connection is established
   const PORT = process.env.PORT || 4000;
   server.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
@@ -243,21 +212,20 @@ mongoose.connect(process.env.MONGODB_URI, {
   process.exit(1);
 });
 
-// Add error handling
+// ✅ Global error handling
 server.on('error', (error) => {
   console.error('Server error:', error);
 });
-
 process.on('unhandledRejection', (error) => {
   console.error('Unhandled Rejection:', error);
 });
 
-// Add periodic cleanup of inactive users
+// ✅ Periodic cleanup of inactive users
 setInterval(() => {
   const now = Date.now();
   activeUsers.forEach((documentUsers, documentId) => {
     documentUsers.forEach((user, userId) => {
-      if (now - user.lastActive > 30000) { // 30 seconds timeout
+      if (now - user.lastActive > 30000) { // 30 seconds inactivity
         documentUsers.delete(userId);
         io.to(documentId).emit('user-left', userId);
       }

@@ -18,7 +18,6 @@ import ShareModal from '../ShareModal/ShareModal';
 import Feedback from '../Feedback/Feedback';
 import { io } from "socket.io-client";
 import axios from 'axios';
-import { GoogleGenerativeAI } from '@google/generative-ai';
 
 const socket = io(import.meta.env.VITE_API_URL || "http://localhost:4000", {
   withCredentials: true,
@@ -86,6 +85,7 @@ function TextEditor() {
       name: user.name,
     };
   });
+  const [feedbackList, setFeedbackList] = useState([]);
 
   //Auto Complete Cursor
 
@@ -904,6 +904,21 @@ function TextEditor() {
       setGeneratingTemplate(false);
     }
   };
+
+  // Add this effect to fetch feedback when the document loads
+  useEffect(() => {
+    if (documentId && userRole === 'reader') {
+      const fetchFeedback = async () => {
+        try {
+          const response = await api.get(`${import.meta.env.VITE_API_URL}/api/feedback/${documentId}`);
+          setFeedbackList(response.data);
+        } catch (error) {
+          console.error('Error fetching feedback:', error);
+        }
+      };
+      fetchFeedback();
+    }
+  }, [documentId, userRole]);
 
   // Add this useEffect to handle content updates
   useEffect(() => {

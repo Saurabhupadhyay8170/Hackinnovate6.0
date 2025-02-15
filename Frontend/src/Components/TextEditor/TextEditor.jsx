@@ -18,7 +18,7 @@ import ShareModal from '../ShareModal/ShareModal';
 import Feedback from '../Feedback/Feedback';
 import { io } from "socket.io-client";
 import axios from 'axios';
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import { GoogleGenerativeAI } from "@google/generative-ai";
 
 const socket = io(import.meta.env.VITE_API_URL || "http://localhost:4000", {
   withCredentials: true,
@@ -28,6 +28,9 @@ const socket = io(import.meta.env.VITE_API_URL || "http://localhost:4000", {
   reconnectionDelay: 1000
 });
 const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
+
+// Initialize the Google AI with your API key
+const genAI = new GoogleGenerativeAI(import.meta.env.VITE_GOOGLE_API_KEY);
 
 const AISuggestion = ({ suggestion, position, onAccept, onDismiss }) => {
   if (!suggestion) return null;
@@ -810,7 +813,6 @@ function TextEditor() {
   const generateTemplate = async (prompt) => {
     try {
       setGeneratingTemplate(true);
-      const genAI = new GoogleGenerativeAI(import.meta.env.VITE_GEMINI_API_KEY);
       const model = genAI.getGenerativeModel({ model: "gemini-pro" });
 
       const templatePrompt = `Generate a story template for the following idea: ${prompt}

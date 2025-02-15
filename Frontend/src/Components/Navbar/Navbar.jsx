@@ -83,10 +83,8 @@ function Navbar() {
   }, [isOpen]);
 
   const navItems = [
-    { name: "Write", path: "/write", icon: Pen },
-    { name: "Explore", path: "/explore", icon: Compass },
-    { name: "Workshops", path: "/workshops", icon: Users },
-    { name: "Library", path: "/library", icon: BookOpen },
+    { name: "Home", path: "/dashboard", icon: Sparkles },
+    { name: "Templates", path: "/template", icon: Sparkles }
   ] 
 
   return (
@@ -258,7 +256,7 @@ function Navbar() {
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.9 }}
-              className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-white rounded-xl shadow-2xl p-6 z-[1002] w-[90%] max-w-md"
+              className="fixed top-[40%] left-[35%] -translate-x-1/2 -translate-y-1/2 bg-white rounded-xl shadow-2xl p-6 z-[1002] w-[90%] max-w-md"
             >
               <div className="flex items-center gap-3 text-sky-900 mb-4">
                 <AlertCircle className="h-6 w-6 text-sky-600" />

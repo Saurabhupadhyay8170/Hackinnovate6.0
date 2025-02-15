@@ -54,7 +54,7 @@ function Footer() {
   ];
 
   return (
-    <footer className="bg-gradient-to-b from-slate-900 to-black text-white relative overflow-hidden">
+    <footer className="bg-gradient-to-b from-slate-900 to-black text-white relative mt-auto z-0">
       <div className="relative z-20 w-[90%] mx-auto px-4 sm:px-6 md:px-8 pt-16 sm:pt-20 md:pt-24 pb-8 border-t border-purple-500/20">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-12 mb-16">
           {/* Brand Section */}
@@ -160,12 +160,12 @@ function Footer() {
         {/* Bottom Section */}
         <div className="border-t border-purple-500/20 pt-6">
           <p className="text-gray-400 text-center">
-            © {new Date().getFullYear()} StoryMosaic. Unleashing creativity, one story at a time.
+            © {new Date().getFullYear()} StoryMosaic. codePirates - Vishv Boda, Deep Patel, Subrat Jain, Nirav Shah
           </p>
         </div>
       </div>
 
-      {/* Enhanced Background Elements */}
+      {/* Background Elements */}
       <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none z-0">
         <div className="absolute top-0 left-1/4 w-64 h-64 bg-gradient-to-r from-purple-600/30 to-pink-600/30 rounded-full filter blur-[128px] opacity-20 animate-pulse" />
         <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-gradient-to-r from-purple-600/30 to-pink-600/30 rounded-full filter blur-[128px] opacity-20 animate-pulse" />

@@ -241,50 +241,6 @@ const Dashboard = () => {
           </motion.button>
         </motion.div>
 
-        {/* Modified Templates Section - removed emojis */}
-        <motion.div
-          variants={containerVariants}
-          initial="hidden"
-          animate="visible"
-          className="mb-16"
-        >
-          <h2 className="text-3xl font-semibold mb-8 flex items-center gap-3 text-gray-200">
-            <MdOutlineDocumentScanner className="text-3xl text-pink-500" />
-            Templates
-          </h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
-            {templates.map((template) => (
-              <motion.div
-                key={template.id}
-                variants={itemVariants}
-                whileHover={{ 
-                  y: -5,
-                  boxShadow: "0 10px 30px -10px rgba(236, 72, 153, 0.3)",
-                  borderColor: "rgba(236, 72, 153, 0.5)"
-                }}
-                className="bg-slate-800/50 backdrop-blur-sm p-8 rounded-2xl border border-slate-700/50 transition-all cursor-pointer group"
-              >
-                <div className="h-12 w-12 mb-4 bg-pink-500/10 rounded-lg flex items-center justify-center">
-                  <MdOutlineDocumentScanner className="text-2xl text-pink-500" />
-                </div>
-                <h3 className="text-xl font-medium text-gray-200 mb-2">{template.name}</h3>
-                <AnimatePresence>
-                  {hoveredTemplate === template.id && (
-                    <motion.p
-                      initial={{ opacity: 0, height: 0 }}
-                      animate={{ opacity: 1, height: 'auto' }}
-                      exit={{ opacity: 0, height: 0 }}
-                      className="text-sm text-gray-400 leading-relaxed"
-                    >
-                      {template.description}
-                    </motion.p>
-                  )}
-                </AnimatePresence>
-              </motion.div>
-            ))}
-          </div>
-        </motion.div>
-
         {/* Enhanced Documents Sections */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-16">
           {/* Recent Documents */}

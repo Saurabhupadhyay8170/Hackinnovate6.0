@@ -6,7 +6,7 @@ import Home from "./Pages/Home.jsx";
 import Login from "./Pages/Login.jsx";
 import TextEditor from "./Components/TextEditor/TextEditor.jsx";
 import Room from "./Components/Room.jsx";
-// import Template from "./Pages/Template.jsx";
+import Template from "./Pages/Template.jsx";
 import NotFound from "./Pages/NotFound.jsx";
 import ProtectedRoute from './middleware/ProtectedRoute';
 
@@ -36,6 +36,7 @@ function App() {
             </ProtectedRoute>
           } />
           <Route path="*" element={<NotFound />} />
+          <Route path="/template" element={<Template />} />
         </Route>
       </Routes>
     </Router>

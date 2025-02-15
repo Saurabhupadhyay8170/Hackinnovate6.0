@@ -310,4 +310,36 @@ router.post('/', async (req, res) => {
   }
 });
 
+router.post('/api/documents', auth, async (req, res) => {
+  try {
+    const { title, content, metadata } = req.body;
+    
+    // Generate a unique document ID
+    const documentId = generateUniqueId(); // implement this function
+    
+    const newDocument = new Document({
+      documentId,
+      title: title || 'Untitled Document',
+      content,
+      author: req.user._id,
+      metadata: metadata || {},
+      createdAt: new Date(),
+      updatedAt: new Date()
+    });
+
+    await newDocument.save();
+
+    res.status(201).json({
+      message: 'Document created successfully',
+      documentId: newDocument.documentId
+    });
+  } catch (error) {
+    console.error('Error creating document:', error);
+    res.status(500).json({ 
+      message: 'Error creating document',
+      error: error.message 
+    });
+  }
+});
+
 export default router; 

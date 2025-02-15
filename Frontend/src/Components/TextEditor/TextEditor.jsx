@@ -18,6 +18,8 @@ import ShareModal from '../ShareModal/ShareModal';
 import Feedback from '../Feedback/Feedback';
 import { io } from "socket.io-client";
 import axios from 'axios';
+import { Sparkles, Menu, FileDown, X } from 'lucide-react';
+import html2pdf from 'html2pdf.js';
 
 const socket = io(import.meta.env.VITE_API_URL || "http://localhost:4000", {
   withCredentials: true,
@@ -86,6 +88,7 @@ function TextEditor() {
     };
   });
   const [feedbackList, setFeedbackList] = useState([]);
+  const [showPdfModal, setShowPdfModal] = useState(false);
 
   //Auto Complete Cursor
 
@@ -823,21 +826,37 @@ function TextEditor() {
         {
           contents: [{
             parts: [{
-              text: `Generate a well-structured HTML article about: "${prompt}"
+              text: `Generate a well-structured story about: "${prompt}"
 
               Requirements:
-              1. Use proper HTML5 semantic tags
-              2. Include the following structure:
-                 - <h1> for the main title
-                 - <h2> for major sections
-                 - <h3> for subsections
-                 - <p> for paragraphs
-                 - <ul> or <ol> for lists where appropriate
-              3. Add appropriate CSS classes for styling
+              1. Use proper story structure with the following HTML format:
+                 - <h1> for the story title
+                 - <h2> for chapter titles
+                 - <h3> for scene headings
+                 - <p> for narrative content
+                 - <blockquote> for important dialogues or quotes
+              2. Include the following sections:
+                 - Opening hook
+                 - Character introductions
+                 - Rising action
+                 - Climax
+                 - Resolution
+              3. Add appropriate CSS classes for styling:
+                 - class="chapter" for chapter sections
+                 - class="scene" for scene sections
+                 - class="narrative" for story paragraphs
+                 - class="dialogue" for character dialogues
               4. Format the content in a clean, readable way
-              5. Include a title, introduction, main sections, and conclusion
-              
-              Response should be in pure HTML format, ready to be inserted into a document.`
+              5. Include:
+                 - Engaging title
+                 - Character descriptions
+                 - Setting descriptions
+                 - Plot development
+                 - Emotional moments
+                 - Satisfying conclusion
+
+              Response should be in pure HTML format, ready to be inserted into a story document.
+              Make it engaging and creative, focusing on storytelling elements rather than article structure.`
             }]
           }],
           generationConfig: {
@@ -969,6 +988,135 @@ function TextEditor() {
     };
   }, []);
 
+  const handleExportPDF = () => {
+    const content = editor.getHTML();
+    
+    // Create a styled template with the content
+    const htmlTemplate = `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <style>
+            body {
+              font-family: 'Arial', sans-serif;
+              line-height: 1.6;
+              color: #333;
+              max-width: 800px;
+              margin: 0 auto;
+              padding: 20px;
+            }
+            h1 {
+              font-size: 24px;
+              color: #1a1a1a;
+              margin-bottom: 20px;
+              text-align: center;
+            }
+            h2 {
+              font-size: 20px;
+              color: #2a2a2a;
+              margin-top: 30px;
+              margin-bottom: 15px;
+            }
+            h3 {
+              font-size: 18px;
+              color: #3a3a3a;
+              margin-top: 25px;
+              margin-bottom: 10px;
+            }
+            p {
+              margin-bottom: 15px;
+              text-align: justify;
+            }
+            .chapter {
+              margin-bottom: 40px;
+            }
+            .scene {
+              margin-left: 20px;
+              margin-bottom: 30px;
+              padding-left: 15px;
+              border-left: 3px solid #e5e7eb;
+            }
+            .narrative {
+              color: #4a4a4a;
+            }
+            .dialogue {
+              margin-left: 25px;
+              font-style: italic;
+              color: #666;
+            }
+            blockquote {
+              margin: 20px 0;
+              padding: 10px 20px;
+              border-left: 4px solid #8b5cf6;
+              background-color: #f3f4f6;
+              font-style: italic;
+            }
+          </style>
+        </head>
+        <body>
+          ${content}
+        </body>
+      </html>
+    `;
+
+    // Create a temporary div for preview
+    const previewElement = document.createElement('div');
+    previewElement.innerHTML = htmlTemplate;
+    
+    const opt = {
+      margin: [15, 15, 15, 15],
+      filename: `${title || 'document'}.pdf`,
+      image: { type: 'jpeg', quality: 0.98 },
+      html2canvas: { 
+        scale: 2,
+        useCORS: true,
+        letterRendering: true
+      },
+      jsPDF: { 
+        unit: 'mm', 
+        format: 'a4', 
+        orientation: 'portrait' 
+      }
+    };
+
+    // Generate PDF
+    html2pdf().set(opt).from(previewElement).save().catch(error => {
+      console.error('Error generating PDF:', error);
+      alert('Failed to generate PDF. Please try again.');
+    });
+  };
+
+  // PDF Preview Modal Content
+  const getPdfPreviewContent = () => {
+    const content = editor.getHTML();
+    return `
+      <div class="prose max-w-none">
+        <style>
+          .chapter { margin-bottom: 2rem; }
+          .scene { 
+            margin-left: 1.5rem;
+            padding-left: 1rem;
+            border-left: 3px solid #e5e7eb;
+          }
+          .narrative { color: #4a4a4a; }
+          .dialogue {
+            margin-left: 1.5rem;
+            font-style: italic;
+            color: #666;
+          }
+          blockquote {
+            margin: 1.5rem 0;
+            padding: 0.5rem 1rem;
+            border-left: 4px solid #8b5cf6;
+            background-color: #f3f4f6;
+            font-style: italic;
+          }
+        </style>
+        ${content}
+      </div>
+    `;
+  };
+
   // Add this near the top of the component
   const StatusBar = () => (
     <div className="flex justify-between items-center px-4 py-2 bg-white border-b">
@@ -1052,10 +1200,10 @@ function TextEditor() {
   );
 
   return (
-    <div className="flex flex-col h-screen bg-white">
+    <div className="flex flex-col min-h-screen bg-white relative pb-16">
       <StatusBar />
       <div className="flex-1 flex flex-col overflow-hidden">
-        <div className="min-h-screen bg-white">
+        <div className="min-h-[calc(100vh-200px)] bg-white">
           {/* Add AI status indicator */}
           
 
@@ -1274,12 +1422,27 @@ function TextEditor() {
                 )}
 
                 {/* Add Template Button */}
-                <button
-                  onClick={() => setShowTemplateModal(true)}
-                  className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
-                >
-                  <span>Generate Template</span>
-                </button>
+                {(userRole === 'author' || userRole === 'editor') && (
+                  <motion.button
+                    whileTap={{ scale: 0.98 }}
+                    onClick={() => setShowTemplateModal(true)}
+                    className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
+                  >
+                    <span>Generate Template</span>
+                  </motion.button>
+                )}
+
+                {/* Add Export PDF Button */}
+                {(userRole === 'author' || userRole === 'editor') && (
+                  <motion.button
+                    whileTap={{ scale: 0.98 }}
+                    onClick={() => setShowPdfModal(true)}
+                    className="flex items-center gap-2 px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors"
+                  >
+                    <FileDown className="w-4 h-4" />
+                    <span>Export PDF</span>
+                  </motion.button>
+                )}
               </div>
 
               {userRole === 'author' && (
@@ -1414,6 +1577,58 @@ function TextEditor() {
                     </div>
                   </motion.div>
                 </motion.div>
+              )}
+            </AnimatePresence>
+
+            {/* PDF Preview Modal */}
+            <AnimatePresence>
+              {showPdfModal && (
+                <>
+                  <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50"
+                    onClick={() => setShowPdfModal(false)}
+                  />
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0.95 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.95 }}
+                    className="fixed left-[25%] top-[10%] translate-x-[20%] translate-y-[-50%] w-[90%] max-w-4xl bg-white rounded-xl shadow-2xl z-[1001] p-6"
+                  >
+                    <div className="flex justify-between items-start sticky top-0 bg-white pt-2 pb-4 border-b">
+                      <h2 className="text-2xl font-bold text-gray-800">
+                        Export PDF Preview
+                      </h2>
+                      <button 
+                        onClick={() => setShowPdfModal(false)}
+                        className="text-gray-400 hover:text-gray-600 p-2"
+                      >
+                        <X className="h-6 w-6" />
+                      </button>
+                    </div>
+
+                    <div className="overflow-y-auto max-h-[calc(90vh-200px)] my-4">
+                      <div className="bg-white rounded-lg shadow-lg p-8">
+                        <div 
+                          dangerouslySetInnerHTML={{ __html: getPdfPreviewContent() }} 
+                          className="preview-content"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="flex justify-end sticky bottom-0 bg-white pt-4 border-t">
+                      <button
+                        onClick={handleExportPDF}
+                        className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                      >
+                        <FileDown className="h-5 w-5" />
+                        Download PDF
+                      </button>
+                    </div>
+                  </motion.div>
+                </>
               )}
             </AnimatePresence>
           </motion.div>

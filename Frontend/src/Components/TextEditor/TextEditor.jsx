@@ -26,7 +26,7 @@ const socket = io(import.meta.env.VITE_API_URL || "http://localhost:4000", {
   reconnectionAttempts: 5,
   reconnectionDelay: 1000
 });
-const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY || "AIzaSyAKkCKtLyIfZt8KTfaOLPG0ylKVmrNy5T8";
+const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
 
 const AISuggestion = ({ suggestion, position, onAccept, onDismiss }) => {
   if (!suggestion) return null;
@@ -102,16 +102,19 @@ function TextEditor() {
     if (!text.trim()) return "";
   
     try {
+      const geminiApiKey = process.env.GEMINI_API_KEY; // Ensure this is set in your environment
       const response = await axios.post(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateText?key=YOUR_GEMINI_API_KEY`,
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateText?key=${geminiApiKey}`,
         {
           prompt: { text: `Complete this sentence: "${text}"` },
-          maxTokens: 50
+          maxTokens: 50,
+        },
+        {
+          headers: { "Content-Type": "application/json" },
         }
       );
-  
-      return response.data.candidates[0].output || "";
-    } catch (error) {
+      return response.data;
+    }  catch (error) {
       console.error("Error fetching AI completion:", error);
       return "";
     }

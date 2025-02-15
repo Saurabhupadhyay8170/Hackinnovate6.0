@@ -11,7 +11,7 @@ import {
   RiAlignRight, RiAlignJustify, RiFormatClear, RiListOrdered,
   RiListUnordered, RiArrowGoBackLine, RiArrowGoForwardLine,
   RiShareLine, RiArrowLeftLine, RiEdit2Line, RiArrowLeftSLine,
-  RiCheckLine,RiMessageLine
+  RiCheckLine
 } from 'react-icons/ri';
 import api from '../../utils/api';
 import ShareModal from '../ShareModal/ShareModal';
@@ -27,7 +27,7 @@ const socket = io(import.meta.env.VITE_API_URL || "http://localhost:4000", {
   reconnectionDelay: 1000
 });
 const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
-const [isFeedbackModalOpen, setIsFeedbackModalOpen] = useState(false);
+
 const AISuggestion = ({ suggestion, position, onAccept, onDismiss }) => {
   if (!suggestion) return null;
 
@@ -1351,11 +1351,12 @@ function TextEditor() {
             </AnimatePresence>
 
             {userRole === 'reader' && (
-              <div className="mt-8 border-t pt-8">
-                <Feedback
+              <div className="mt-8">
+                <Feedback 
                   documentId={documentId}
                   userId={JSON.parse(localStorage.getItem('user'))?._id}
                   userRole={userRole}
+                  isModal={false}
                 />
               </div>
             )}
@@ -1422,4 +1423,4 @@ function TextEditor() {
   );
 }
 
-export default TextEditor;
+export default TextEditor; 

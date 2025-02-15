@@ -6,56 +6,46 @@ import dotenv from 'dotenv';
 import { Server } from 'socket.io';
 import authRoutes from './routes/auth.js';
 import documentsRoutes from './routes/documents.js';
-import Document from './models/Document.js';
 import feedbackRoutes from './routes/feedback.routes.js';
 import templateRoutes from './routes/template.routes.js';
+import Document from './models/Document.js';
 import './config/nodemailer.js';
 
 dotenv.config();
 
 const app = express();
 
-// Set COOP header to allow popups and window.postMessage between same-origin popups
+// ✅ Set up proper CORS to allow frontend access
+const corsOptions = {
+  origin: ["https://storymosaic-nine.vercel.app", "http://localhost:3000"],
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+  credentials: true,
+};
+
+app.use(cors(corsOptions));
+app.options('*', cors(corsOptions)); // Handle preflight requests
+
+// ✅ Fix COOP (Cross-Origin-Opener-Policy) for Google OAuth
 app.use((req, res, next) => {
-  res.removeHeader('Cross-Origin-Opener-Policy'); // Remove if not needed
+  res.setHeader("Cross-Origin-Opener-Policy", "same-origin-allow-popups");
+  res.setHeader("Cross-Origin-Embedder-Policy", "require-corp");
   next();
 });
-
-
-// Configure CORS using environment variable CORS_ORIGIN
-app.options('*', cors({
-  origin: process.env.CORS_ORIGIN,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  credentials: true
-}));
-app.use(cors({
-  origin: process.env.CORS_ORIGIN,
-  credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS']
-}));
 
 app.use(express.json());
 
 // In-memory storage for active users in documents
 const activeUsers = new Map();
 const userColors = [
-  '#1A73E8', // Google Blue
-  '#FF5733', // Coral
-  '#27AE60', // Emerald
-  '#9B59B6', // Amethyst
-  '#E67E22', // Carrot
-  '#16A085', // Green Sea
-  '#E84393', // Pink
-  '#2980B9', // Belize Hole
-  '#C0392B', // Pomegranate
-  '#8E44AD'  // Wisteria
+  '#1A73E8', '#FF5733', '#27AE60', '#9B59B6', '#E67E22',
+  '#16A085', '#E84393', '#2980B9', '#C0392B', '#8E44AD'
 ];
 
-// Create HTTP server and Socket.IO server with CORS config
+// Create HTTP and Socket.IO server
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
-    origin: ["http://localhost:5173", "http://localhost:3000"],
+    origin: [process.env.CORS_ORIGIN, "http://localhost:3000"],
     methods: ["GET", "POST"],
     credentials: true,
     transports: ['websocket', 'polling']
@@ -63,7 +53,7 @@ const io = new Server(server, {
   allowEIO3: true
 });
 
-// Socket.IO connection handling
+// ✅ Socket.IO connection handling
 io.on("connection", (socket) => {
   console.log("Client connected:", socket.id);
 
@@ -76,7 +66,6 @@ io.on("connection", (socket) => {
     const documentUsers = activeUsers.get(documentId);
     const userColor = userColors[documentUsers.size % userColors.length];
 
-    // Add user to active users for this document
     documentUsers.set(user._id, {
       id: user._id,
       name: user.name,
@@ -85,7 +74,6 @@ io.on("connection", (socket) => {
       lastActive: Date.now()
     });
 
-    // Load document from database and emit to the joining user
     try {
       const document = await Document.findOne({ documentId });
       if (document) {
@@ -136,13 +124,13 @@ io.on("connection", (socket) => {
   });
 });
 
-// Define API routes
+// ✅ Define API routes
 app.use('/api/auth', authRoutes);
 app.use('/api/documents', documentsRoutes);
 app.use('/api/feedback', feedbackRoutes);
 app.use('/api/templates', templateRoutes);
 
-// Connect to MongoDB and start the server
+// ✅ Connect to MongoDB and start the server
 mongoose.connect(process.env.MONGODB_URI, {
   useNewUrlParser: true,
   useUnifiedTopology: true,
@@ -159,7 +147,7 @@ mongoose.connect(process.env.MONGODB_URI, {
   process.exit(1);
 });
 
-// Global error handling
+// ✅ Global error handling
 server.on('error', (error) => {
   console.error('Server error:', error);
 });
@@ -167,7 +155,7 @@ process.on('unhandledRejection', (error) => {
   console.error('Unhandled Rejection:', error);
 });
 
-// Periodic cleanup of inactive users
+// ✅ Periodic cleanup of inactive users
 setInterval(() => {
   const now = Date.now();
   activeUsers.forEach((documentUsers, documentId) => {

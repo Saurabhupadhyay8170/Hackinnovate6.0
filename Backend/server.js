@@ -17,9 +17,10 @@ const app = express();
 
 // Set COOP header to allow popups and window.postMessage between same-origin popups
 app.use((req, res, next) => {
-  res.setHeader('Cross-Origin-Opener-Policy', 'same-origin-allow-popups');
+  res.removeHeader('Cross-Origin-Opener-Policy'); // Remove if not needed
   next();
 });
+
 
 // Configure CORS using environment variable CORS_ORIGIN
 app.options('*', cors({

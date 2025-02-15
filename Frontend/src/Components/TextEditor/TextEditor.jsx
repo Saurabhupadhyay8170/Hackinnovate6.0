@@ -1071,7 +1071,7 @@ function TextEditor() {
           )}
         </AnimatePresence>
       </motion.div>
-    </div>
+      </div>
   );
 }
 

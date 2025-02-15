@@ -6,17 +6,17 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 // Verify environment variables
-if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
+if (!process.env.SMTP_USER || !process.env.SMTP_PASS) {
   console.error('Email credentials are missing in environment variables!');
-  console.log('EMAIL_USER:', process.env.EMAIL_USER ? 'Present' : 'Missing');
-  console.log('EMAIL_PASS:', process.env.EMAIL_PASS ? 'Present' : 'Missing');
+  console.log('SMTP_USER:', process.env.SMTP_USER ? 'Present' : 'Missing');
+  console.log('SMTP_PASS:', process.env.SMTP_PASS ? 'Present' : 'Missing');
 }
 
 const transporter = nodemailer.createTransport({
   service: 'gmail',
   auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS
+    user: process.env.SMTP_USER,
+    pass: process.env.SMTP_PASS
   }
 });
 
@@ -25,8 +25,8 @@ transporter.verify((error, success) => {
   if (error) {
     console.error('Email connection error:', error);
     console.log('Email Credentials:', {
-      user: process.env.EMAIL_USER,
-      passLength: process.env.EMAIL_PASS ? process.env.EMAIL_PASS.length : 0
+      user: process.env.SMTP_USER,
+      passLength: process.env.SMTP_PASS ? process.env.SMTP_PASS.length : 0
     });
   } else {
     console.log('Email Server is ready to send emails');
@@ -34,14 +34,14 @@ transporter.verify((error, success) => {
 });
 
 export const sendShareEmail = async (recipientEmail, documentTitle, senderName, accessLevel, documentId) => {
-  if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
+  if (!process.env.SMTP_USER || !process.env.SMTP_PASS) {
     throw new Error('Email credentials are not configured');
   }
 
   const loginLink = `${process.env.FRONTEND_URL}/document/d/${documentId}`;
   
   const mailOptions = {
-    from: `"DocCollab" <${process.env.EMAIL_USER}>`,
+    from: `"DocCollab" <${process.env.SMTP_USER}>`,
     to: recipientEmail,
     subject: `${senderName} shared a document with you: ${documentTitle}`,
     html: getShareEmailTemplate(documentTitle, senderName, accessLevel, loginLink),
@@ -60,7 +60,7 @@ export const sendShareEmail = async (recipientEmail, documentTitle, senderName, 
 export const sendMail = async (options) => {
   try {
     const info = await transporter.sendMail({
-      from: process.env.EMAIL_USER,
+      from: process.env.SMTP_USER,
       ...options
     });
     return info;

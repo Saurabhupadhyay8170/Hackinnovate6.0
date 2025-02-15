@@ -18,7 +18,6 @@ import ShareModal from '../ShareModal/ShareModal';
 import Feedback from '../Feedback/Feedback';
 import { io } from "socket.io-client";
 import axios from 'axios';
-import { GoogleGenerativeAI } from "@google/generative-ai";
 
 const socket = io(import.meta.env.VITE_API_URL || "http://localhost:4000", {
   withCredentials: true,
@@ -28,9 +27,6 @@ const socket = io(import.meta.env.VITE_API_URL || "http://localhost:4000", {
   reconnectionDelay: 1000
 });
 const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
-
-// Initialize the Google AI with your API key
-const genAI = new GoogleGenerativeAI(import.meta.env.VITE_GOOGLE_API_KEY);
 
 const AISuggestion = ({ suggestion, position, onAccept, onDismiss }) => {
   if (!suggestion) return null;
@@ -813,32 +809,46 @@ function TextEditor() {
   const generateTemplate = async (prompt) => {
     try {
       setGeneratingTemplate(true);
-      const model = genAI.getGenerativeModel({ model: "gemini-pro" });
-
-      const templatePrompt = `Generate a story template for the following idea: ${prompt}
-      Return a valid JSON object with this structure (no additional text or formatting):
-      {
-        "templateName": "string",
-        "genre": "string",
-        "description": "string",
-        "structure": {
-          "title": "string",
-          "chapters": [
-            {
-              "chapterTitle": "string",
-              "scenes": ["string"]
-            }
-          ]
+      
+      // Use the existing GEMINI_API_KEY
+      const response = await axios.post(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${import.meta.env.VITE_GEMINI_API_KEY}`,
+        {
+          contents: [{
+            parts: [{
+              text: `Generate a story template for the following idea: ${prompt}
+              Return a valid JSON object with this structure (no additional text or formatting):
+              {
+                "templateName": "string",
+                "genre": "string",
+                "description": "string",
+                "structure": {
+                  "title": "string",
+                  "chapters": [
+                    {
+                      "chapterTitle": "string",
+                      "scenes": ["string"]
+                    }
+                  ]
+                }
+              }`
+            }]
+          }],
+          generationConfig: {
+            temperature: 0.7,
+            maxOutputTokens: 1024,
+            topP: 0.8,
+            topK: 40
+          }
         }
-      }`;
+      );
 
-      const result = await model.generateContent(templatePrompt);
-      const text = result.response.text();
+      const result = response.data.candidates[0].content.parts[0].text;
       
       // Clean up and parse the response
-      const cleanJson = text.includes('```') 
-        ? text.replace(/```json\n|\n```|```/g, '').trim()
-        : text;
+      const cleanJson = result.includes('```') 
+        ? result.replace(/```json\n|\n```|```/g, '').trim()
+        : result;
       
       const noTrailingCommas = cleanJson.replace(/,(\s*[}\]])/g, '$1');
       const template = JSON.parse(noTrailingCommas);

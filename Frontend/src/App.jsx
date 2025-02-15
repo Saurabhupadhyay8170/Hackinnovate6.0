@@ -35,11 +35,6 @@ function App() {
               <TextEditor />
             </ProtectedRoute>
           } />
-          <Route path="/templates" element={
-            // <ProtectedRoute>
-              <Template />
-            /* </ProtectedRoute> */
-          } />
           <Route path="*" element={<NotFound />} />
         </Route>
       </Routes>

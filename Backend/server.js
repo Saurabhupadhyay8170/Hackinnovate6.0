@@ -98,7 +98,7 @@ io.on("connection", (socket) => {
 
     // Load document and emit to all users
     try {
-      const document = await Document.findById(documentId);
+      const document = await Document.findOne({ documentId: documentId });
       if (document) {
         // Send document content to joining user
         socket.emit('load-document', document.data);

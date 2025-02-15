@@ -1,6 +1,7 @@
 import mongoose from 'mongoose';
 
 const documentSchema = new mongoose.Schema({
+  _id: { type: mongoose.Schema.Types.ObjectId, auto: true },
   documentId: {
     type: String,
     required: true,
@@ -38,6 +39,14 @@ const documentSchema = new mongoose.Schema({
   lastModified: {
     type: Date,
     default: Date.now
+  },
+  templateId: {
+    type: String,
+    ref: 'Template'
+  },
+  metadata: {
+    type: Object,
+    default: {}
   }
 });
 

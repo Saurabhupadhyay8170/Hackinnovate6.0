@@ -15,8 +15,10 @@ import {
 } from 'react-icons/ri';
 import api from '../../utils/api';
 import ShareModal from '../ShareModal/ShareModal';
+import Feedback from '../Feedback/Feedback';
 import { io } from "socket.io-client";
 import axios from 'axios';
+import { GoogleGenerativeAI } from '@google/generative-ai';
 
 const socket = io(import.meta.env.VITE_API_URL || "http://localhost:4000", {
   withCredentials: true,
@@ -25,7 +27,7 @@ const socket = io(import.meta.env.VITE_API_URL || "http://localhost:4000", {
   reconnectionAttempts: 5,
   reconnectionDelay: 1000
 });
-const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY || "AIzaSyAKkCKtLyIfZt8KTfaOLPG0ylKVmrNy5T8";
+const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
 
 const AISuggestion = ({ suggestion, position, onAccept, onDismiss }) => {
   if (!suggestion) return null;
@@ -74,6 +76,7 @@ function TextEditor() {
   const [saveStatus, setSaveStatus] = useState({ status: 'saved', message: 'All changes saved' });
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const [userRole, setUserRole] = useState(null);
+  const [isFeedbackModalOpen, setIsFeedbackModalOpen] = useState(false);
   const [documentContent, setDocumentContent] = useState('');
   const [activeUsers, setActiveUsers] = useState(new Map());
   const [localUser] = useState(() => {
@@ -101,17 +104,40 @@ function TextEditor() {
   
     try {
       const response = await axios.post(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateText?key=YOUR_GEMINI_API_KEY`,
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${GEMINI_API_KEY}`,
         {
-          prompt: { text: `Complete this sentence: "${text}"` },
-          maxTokens: 50
+          contents: [{
+            parts: [{
+              text: `Complete this sentence naturally: "${text}"`
+            }]
+          }],
+          generationConfig: {
+            temperature: 0.7,
+            maxOutputTokens: 50,
+            topP: 0.8,
+            topK: 40
+          }
+        },
+        {
+          headers: {
+            'Content-Type': 'application/json'
+          }
         }
       );
-  
-      return response.data.candidates[0].output || "";
+
+      // Check if response and its data exist
+      if (!response?.data?.candidates?.[0]?.content?.parts?.[0]?.text) {
+        console.warn('No valid completion received from API');
+        return "";
+      }
+
+      return response.data.candidates[0].content.parts[0].text;
     } catch (error) {
       console.error("Error fetching AI completion:", error);
-      return "";
+      if (error.response) {
+        console.error("API Error Details:", error.response.data);
+      }
+      return ""; // Return empty string on error
     }
   };
   const [content, setContent] = useState("");
@@ -122,6 +148,9 @@ function TextEditor() {
   const [isAIEnabled, setIsAIEnabled] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [context, setContext] = useState('');
+  const [showTemplateModal, setShowTemplateModal] = useState(false);
+  const [templatePrompt, setTemplatePrompt] = useState('');
+  const [generatingTemplate, setGeneratingTemplate] = useState(false);
 
   const AihandleInput = async (e) => {
     const text = e.target.innerText;
@@ -248,8 +277,19 @@ function TextEditor() {
 
     // Handle initial document load
     socket.on('load-document', (data) => {
-      editor.commands.setContent(data.content);
-      setActiveUsers(new Map(data.users.map(user => [user.id, user])));
+      if (!data) {
+        console.warn('Received null document data from socket');
+        return;
+      }
+
+      // Set content with fallback to empty string
+      if (editor) {
+        editor.commands.setContent(data?.content || '');
+      }
+
+      // Set active users with fallback to empty array
+      const users = data?.users || [];
+      setActiveUsers(new Map(users.map(user => [user?.id || '', user])));
     });
 
     // Handle real-time content updates
@@ -767,6 +807,86 @@ function TextEditor() {
     }
   }, [editor]);
 
+  const generateTemplate = async (prompt) => {
+    try {
+      setGeneratingTemplate(true);
+      const genAI = new GoogleGenerativeAI(import.meta.env.VITE_GEMINI_API_KEY);
+      const model = genAI.getGenerativeModel({ model: "gemini-pro" });
+
+      const templatePrompt = `Generate a story template for the following idea: ${prompt}
+      Return a valid JSON object with this structure (no additional text or formatting):
+      {
+        "templateName": "string",
+        "genre": "string",
+        "description": "string",
+        "structure": {
+          "title": "string",
+          "chapters": [
+            {
+              "chapterTitle": "string",
+              "scenes": ["string"]
+            }
+          ]
+        }
+      }`;
+
+      const result = await model.generateContent(templatePrompt);
+      const text = result.response.text();
+      
+      // Clean up and parse the response
+      const cleanJson = text.includes('```') 
+        ? text.replace(/```json\n|\n```|```/g, '').trim()
+        : text;
+      
+      const noTrailingCommas = cleanJson.replace(/,(\s*[}\]])/g, '$1');
+      const template = JSON.parse(noTrailingCommas);
+
+      // Format the content for the editor
+      const formattedContent = `
+        <div class="prose max-w-none">
+          <h1 class="text-3xl font-bold mb-4">${template.structure.title}</h1>
+          
+          <div class="mb-6">
+            <p class="text-gray-600"><strong>Genre:</strong> ${template.genre}</p>
+            <p class="text-gray-600 mb-4">${template.description}</p>
+          </div>
+
+          ${template.structure.chapters.map(chapter => `
+            <div class="mb-8">
+              <h2 class="text-2xl font-bold mb-4">${chapter.chapterTitle}</h2>
+              ${chapter.scenes.map(scene => `
+                <div class="mb-4">
+                  <h3 class="text-xl font-semibold mb-2">${scene}</h3>
+                  <div class="p-4 border border-dashed border-gray-300 rounded-lg">
+                    <p class="text-gray-500 italic">Start writing your scene here...</p>
+                  </div>
+                </div>
+              `).join('')}
+            </div>
+          `).join('')}
+        </div>
+      `;
+
+      // Update editor content
+      editor?.commands.setContent(formattedContent);
+      setShowTemplateModal(false);
+      
+      // Save the template
+      await api.post(`${import.meta.env.VITE_API_URL}/api/templates`, {
+        templateName: template.templateName,
+        genre: template.genre,
+        description: template.description,
+        structure: template.structure
+      });
+
+    } catch (error) {
+      console.error('Error generating template:', error);
+      alert('Failed to generate template. Please try again.');
+    } finally {
+      setGeneratingTemplate(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-white">
       {/* Add AI status indicator */}
@@ -1002,6 +1122,14 @@ function TextEditor() {
                 {userRole === 'reviewer' ? 'Reviewer Access - Read Only' : 'Read Only Access'}
               </div>
             )}
+
+            {/* Add Template Button */}
+            <button
+              onClick={() => setShowTemplateModal(true)}
+              className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
+            >
+              <span>Generate Template</span>
+            </button>
           </div>
 
           {userRole === 'author' && (
@@ -1036,6 +1164,53 @@ function TextEditor() {
           ))}
         </div>
 
+        <AnimatePresence>
+          {isFeedbackModalOpen && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center"
+            >
+              <motion.div
+                initial={{ scale: 0.95 }}
+                animate={{ scale: 1 }}
+                exit={{ scale: 0.95 }}
+                className="bg-white rounded-lg w-full max-w-2xl max-h-[80vh] overflow-y-auto m-4"
+              >
+                <div className="p-6">
+                  <div className="flex justify-between items-center mb-4">
+                    <h2 className="text-2xl font-bold">Reader Feedback</h2>
+                    <button
+                      onClick={() => setIsFeedbackModalOpen(false)}
+                      className="text-gray-500 hover:text-gray-700"
+                    >
+                      ×
+                    </button>
+                  </div>
+                  <Feedback
+                    documentId={documentId}
+                    userId={JSON.parse(localStorage.getItem('user'))?._id}
+                    userRole={userRole}
+                    isModal={true}
+                  />
+                </div>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {userRole === 'reader' && (
+          <div className="mt-8">
+            <Feedback 
+              documentId={documentId}
+              userId={JSON.parse(localStorage.getItem('user'))?._id}
+              userRole={userRole}
+              isModal={false}
+            />
+          </div>
+        )}
+
         <ShareModal
           isOpen={isShareModalOpen}
           onClose={() => setIsShareModalOpen(false)}
@@ -1067,6 +1242,53 @@ function TextEditor() {
                   <div className="absolute bottom-0 right-4 transform translate-y-1/2 rotate-45 w-2 h-2 bg-gray-800" />
                 </div>
               </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Template Generation Modal */}
+        <AnimatePresence>
+          {showTemplateModal && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center"
+            >
+              <motion.div
+                initial={{ scale: 0.95 }}
+                animate={{ scale: 1 }}
+                exit={{ scale: 0.95 }}
+                className="bg-white rounded-lg w-full max-w-lg p-6 m-4"
+              >
+                <h2 className="text-2xl font-bold mb-4">Generate Template</h2>
+                <div className="mb-4">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Enter your story idea
+                  </label>
+                  <textarea
+                    value={templatePrompt}
+                    onChange={(e) => setTemplatePrompt(e.target.value)}
+                    className="w-full h-32 p-2 border rounded-lg resize-none"
+                    placeholder="Describe your story idea..."
+                  />
+                </div>
+                <div className="flex justify-end gap-2">
+                  <button
+                    onClick={() => setShowTemplateModal(false)}
+                    className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={() => generateTemplate(templatePrompt)}
+                    disabled={generatingTemplate || !templatePrompt.trim()}
+                    className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50"
+                  >
+                    {generatingTemplate ? 'Generating...' : 'Generate'}
+                  </button>
+                </div>
+              </motion.div>
             </motion.div>
           )}
         </AnimatePresence>

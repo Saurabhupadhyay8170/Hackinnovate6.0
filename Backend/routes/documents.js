@@ -353,7 +353,8 @@ router.delete('/:documentId', auth, async (req, res) => {
     }
 
     // Check if user is authorized to delete (only author can delete)
-    if (document.author.toString() !== req.user._id.toString()) {
+    console.log(document);
+    if (document?.author.toString() !== req.user._id.toString()) {
       return res.status(403).json({ 
         message: 'Unauthorized: Only the document author can delete this document' 
       });

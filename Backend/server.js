@@ -7,7 +7,9 @@ import { Server } from 'socket.io';
 import authRoutes from './routes/auth.js';
 import documentsRoutes from './routes/documents.js';
 import Document from './models/Document.js';
-import feedbackRoutes from './routes/feedback.routes.js'
+import feedbackRoutes from './routes/feedback.routes.js';
+import './config/nodemailer.js';
+import templateRoutes from './routes/template.routes.js';
 
 dotenv.config();
 
@@ -20,7 +22,8 @@ app.use((req, res, next) => {
 });
 
 app.use(cors({
-  origin: '*',
+  origin: ["http://localhost:5173", "http://localhost:3000"],
+  credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS']
 }));
 app.use(express.json());
@@ -59,10 +62,12 @@ const server = http.createServer(app);
 // Create Socket.IO server with CORS configuration
 const io = new Server(server, {
   cors: {
-    origin: "http://localhost:5173", // Match your frontend URL
+    origin: ["http://localhost:5173", "http://localhost:3000"], // Allow both development ports
     methods: ["GET", "POST"],
-    credentials: true
-  }
+    credentials: true,
+    transports: ['websocket', 'polling']
+  },
+  allowEIO3: true // Enable compatibility mode
 });
 
 // Store document data for each document
@@ -161,27 +166,34 @@ io.on("connection", (socket) => {
 app.use('/api/auth', authRoutes);
 app.use('/api/documents', documentsRoutes);
 app.use('/api/feedback', feedbackRoutes);
+app.use('/api/templates', templateRoutes);
+
 
 // Connect to MongoDB using your Atlas URI
 mongoose.connect(process.env.MONGODB_URI, {
   useNewUrlParser: true,
   useUnifiedTopology: true,
-  serverSelectionTimeoutMS: 30000,
 })
-  .then(() => console.log('Connected to MongoDB'))
-  .catch(err => console.error('Error connecting to MongoDB:', err));
-
-// Use server.listen instead of app.listen
-const PORT = process.env.PORT || 4000;
-server.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+.then(() => {
+  console.log('Connected to MongoDB');
+  // Start server only after MongoDB connection is established
+  const PORT = process.env.PORT || 4000;
+  server.listen(PORT, () => {
+    console.log(`Server running on port ${PORT}`);
+  });
+})
+.catch(err => {
+  console.error('MongoDB connection error:', err);
+  process.exit(1);
 });
 
-// Handle unhandled promise rejections
-process.on('unhandledRejection', (err) => {
-  console.error('Unhandled Promise Rejection:', err);
-  // Close server & exit process
-  server.close(() => process.exit(1));
+// Add error handling
+server.on('error', (error) => {
+  console.error('Server error:', error);
+});
+
+process.on('unhandledRejection', (error) => {
+  console.error('Unhandled Rejection:', error);
 });
 
 // Add periodic cleanup of inactive users

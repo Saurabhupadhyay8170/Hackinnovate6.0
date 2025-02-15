@@ -15,9 +15,58 @@ import {
 } from 'react-icons/ri';
 import api from '../../utils/api';
 import ShareModal from '../ShareModal/ShareModal';
+import Feedback from '../Feedback/Feedback';
 import { io } from "socket.io-client";
+import axios from 'axios';
+import { GoogleGenerativeAI } from '@google/generative-ai';
 
-const socket = io("http://localhost:4000");
+const socket = io(import.meta.env.VITE_API_URL || "http://localhost:4000", {
+  withCredentials: true,
+  transports: ['websocket', 'polling'],
+  reconnection: true,
+  reconnectionAttempts: 5,
+  reconnectionDelay: 1000
+});
+const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
+
+const AISuggestion = ({ suggestion, position, onAccept, onDismiss }) => {
+  if (!suggestion) return null;
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: -10 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -10 }}
+      className="absolute z-50"
+      style={{
+        left: position.x,
+        top: position.y + 24,
+      }}
+    >
+      <div className="bg-white rounded-lg shadow-lg border border-gray-200 p-3 max-w-md">
+        <div className="flex items-center gap-2 mb-2">
+          <div className="w-4 h-4 rounded-full bg-purple-500 animate-pulse" />
+          <span className="text-sm font-medium text-gray-600">AI Suggestion</span>
+        </div>
+        <p className="text-gray-700 mb-2">{suggestion}</p>
+        <div className="flex justify-end gap-2">
+          <button
+            onClick={onDismiss}
+            className="px-3 py-1 text-sm text-gray-600 hover:bg-gray-100 rounded"
+          >
+            Dismiss
+          </button>
+          <button
+            onClick={onAccept}
+            className="px-3 py-1 text-sm bg-purple-500 text-white rounded hover:bg-purple-600"
+          >
+            Accept ⌘↵
+          </button>
+        </div>
+      </div>
+    </motion.div>
+  );
+};
 
 function TextEditor() {
   const { documentId } = useParams();
@@ -27,6 +76,7 @@ function TextEditor() {
   const [saveStatus, setSaveStatus] = useState({ status: 'saved', message: 'All changes saved' });
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const [userRole, setUserRole] = useState(null);
+  const [isFeedbackModalOpen, setIsFeedbackModalOpen] = useState(false);
   const [documentContent, setDocumentContent] = useState('');
   const [activeUsers, setActiveUsers] = useState(new Map());
   const [localUser] = useState(() => {
@@ -36,8 +86,103 @@ function TextEditor() {
       name: user.name,
     };
   });
-  const [userCursor, setUserCursor] = useState({ x: 0, y: 0 });
-  const colors = ['#FF0000', '#00FF00', '#0000FF', '#FFA500', '#800080']; // Cursor colors
+
+  //Auto Complete Cursor
+
+  const getCursorPosition = () => {
+    const selection = window.getSelection();
+    if (!selection.rangeCount) return null;
+  
+    const range = selection.getRangeAt(0);
+    const rect = range.getBoundingClientRect();
+  
+    return { x: rect.left, y: rect.top + 25 }; // Position suggestion below cursor
+  };
+
+  const fetchCompletion = async (text) => {
+    if (!text.trim()) return "";
+  
+    try {
+      const geminiApiKey = process.env.GEMINI_API_KEY; // Ensure this is set in your environment
+      const response = await axios.post(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateText?key=${geminiApiKey}`,
+        {
+          prompt: { text: `Complete this sentence: "${text}"` },
+          maxTokens: 50,
+        },
+        {
+          headers: { "Content-Type": "application/json" },
+        }
+      );
+      return response.data;
+    }  catch (error) {
+      console.error("Error fetching AI completion:", error);
+      return "";
+    }
+  };
+  const [content, setContent] = useState("");
+  const [aiSuggestion, setAiSuggestion] = useState("");
+  const [cursorPosition, setCursorPosition] = useState({ x: 0, y: 0 });
+  const [showSuggestion, setShowSuggestion] = useState(false);
+  const [lastText, setLastText] = useState("");
+  const [isAIEnabled, setIsAIEnabled] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [context, setContext] = useState('');
+  const [showTemplateModal, setShowTemplateModal] = useState(false);
+  const [templatePrompt, setTemplatePrompt] = useState('');
+  const [generatingTemplate, setGeneratingTemplate] = useState(false);
+
+  const AihandleInput = async (e) => {
+    const text = e.target.innerText;
+    setContent(text);
+
+    const aiSuggestion = await fetchCompletion(text);
+    setAiSuggestion(aiSuggestion);
+  };
+
+  const AihandleKeyUp = () => {
+    const pos = getCursorPosition();
+    if (pos) setCursorPosition(pos);
+  };
+
+  // Handle keyboard shortcuts
+  const handleKeyboardShortcuts = useCallback((event) => {
+    // Toggle AI with Cmd+/ or Ctrl+/
+    if ((event.metaKey || event.ctrlKey) && event.key === '/') {
+      event.preventDefault();
+      setIsAIEnabled(prev => !prev);
+      
+      // If turning off AI, clear suggestions
+      if (isAIEnabled) {
+        setShowSuggestion(false);
+        setAiSuggestion('');
+        setContext('');
+      } else {
+        // If turning on AI, trigger suggestion
+        triggerAISuggestion();
+      }
+    }
+    
+    // Accept suggestion with Cmd/Ctrl + Enter
+    if (showSuggestion && (event.metaKey || event.ctrlKey) && event.key === 'Enter') {
+      event.preventDefault();
+      acceptSuggestion();
+    }
+
+    // Dismiss with Escape
+    if (event.key === 'Escape' && showSuggestion) {
+      event.preventDefault();
+      setShowSuggestion(false);
+    }
+  }, [isAIEnabled, showSuggestion]);
+
+  // Add keyboard shortcut listener
+  useEffect(() => {
+    document.addEventListener('keydown', handleKeyboardShortcuts);
+    return () => {
+      document.removeEventListener('keydown', handleKeyboardShortcuts);
+    };
+  }, [handleKeyboardShortcuts]);
 
   // Move editor initialization before the useEffect
   const editor = useEditor({
@@ -60,6 +205,17 @@ function TextEditor() {
       handleContentChange(content);
       // Emit changes to other users
       socket.emit("send-changes", content);
+      
+      // Only trigger AI if enabled
+      if (isAIEnabled) {
+        const { view } = editor;
+        const pos = view.coordsAtPos(view.state.selection.anchor);
+        setCursorPosition({ x: pos.left, y: pos.top });
+        
+        // Get text for AI completion
+        const text = editor.getText();
+        handleAICompletion(text);
+      }
     },
     onSelectionUpdate: ({ editor }) => {
       const { from, to } = editor.state.selection;
@@ -71,6 +227,22 @@ function TextEditor() {
         });
       }
     },
+    onKeyDown: ({ event }) => {
+      // Trigger AI suggestion with Cmd+/
+      if ((event.metaKey || event.ctrlKey) && event.key === '/') {
+        event.preventDefault();
+        triggerAISuggestion();
+      }
+      // Accept suggestion with Cmd+Enter
+      if (showSuggestion && (event.metaKey || event.ctrlKey) && event.key === 'Enter') {
+        event.preventDefault();
+        acceptSuggestion();
+      }
+      // Dismiss with Escape
+      if (event.key === 'Escape') {
+        setShowSuggestion(false);
+      }
+    }
   });
 
   // Socket.IO effect
@@ -121,10 +293,14 @@ function TextEditor() {
     };
   }, [documentId, editor, localUser]);
 
-  const handleContentChange = useCallback((content) => {
-    setSaving(true);
-    saveDocument(content);
-  }, []);
+  const handleContentChange = useCallback((newContent) => {
+    setContent(newContent);
+    // Save to server
+    socket.emit('send-changes', {
+      documentId,
+      content: newContent
+    });
+  }, [documentId]);
 
   const saveDocument = async (content) => {
     try {
@@ -461,8 +637,313 @@ function TextEditor() {
     );
   };
 
+  const handleAICompletion = async (text) => {
+    if (!text.trim() || text === lastText) return;
+    setLastText(text);
+
+    try {
+      const response = await axios.post(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${GEMINI_API_KEY}`,
+        {
+          contents: [{
+            parts: [{
+              text: `Complete this sentence naturally: "${text}"`
+            }]
+          }],
+          generationConfig: {
+            temperature: 0.7,
+            maxOutputTokens: 50,
+            topP: 0.8,
+            topK: 40
+          }
+        },
+        {
+          headers: {
+            'Content-Type': 'application/json'
+          }
+        }
+      );
+
+      const suggestion = response.data.candidates?.[0]?.content?.parts?.[0]?.text;
+      if (suggestion) {
+        setAiSuggestion(suggestion);
+        setShowSuggestion(true);
+      }
+    } catch (error) {
+      console.error("Error fetching AI completion:", error);
+      if (error.response) {
+        console.error("API Error Details:", error.response.data);
+      }
+    }
+  };
+
+  const acceptSuggestion = useCallback(() => {
+    if (!editor || !aiSuggestion) return;
+    
+    editor.commands.insertContent(aiSuggestion);
+    setShowSuggestion(false);
+    setAiSuggestion("");
+  }, [editor, aiSuggestion]);
+
+  // Add connection status handling
+  useEffect(() => {
+    socket.on('connect', () => {
+      console.log('Connected to server');
+    });
+
+    socket.on('connect_error', (error) => {
+      console.error('Connection error:', error);
+    });
+
+    socket.on('disconnect', () => {
+      console.log('Disconnected from server');
+    });
+
+    return () => {
+      socket.off('connect');
+      socket.off('connect_error');
+      socket.off('disconnect');
+    };
+  }, []);
+
+  // Update the triggerAISuggestion function with better prompting
+  const triggerAISuggestion = useCallback(async () => {
+    if (!editor) return;
+    
+    setIsLoading(true);
+    const selection = editor.state.selection;
+    const pos = editor.view.coordsAtPos(selection.anchor);
+    setCursorPosition({ x: pos.left, y: pos.top });
+
+    // Get better context for more accurate suggestions
+    const text = editor.getText();
+    const currentParagraph = text.split('\n').pop() || '';
+    const previousParagraph = text.split('\n').slice(-2)[0] || '';
+    setContext(currentParagraph);
+
+    try {
+      const response = await axios.post(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${GEMINI_API_KEY}`,
+        {
+          contents: [{
+            parts: [{
+              text: `Given this context from a document:
+              Previous paragraph: "${previousParagraph}"
+              Current paragraph: "${currentParagraph}"
+              
+              Continue the current paragraph naturally, maintaining the same:
+              - Writing style and tone
+              - Technical level
+              - Context and theme
+              
+              Provide a concise, contextually relevant continuation that flows seamlessly.
+              Response should be direct continuation without repetition.`
+            }]
+          }],
+          generationConfig: {
+            temperature: 0.7,
+            maxOutputTokens: 100,
+            topP: 0.9,
+            topK: 40,
+            stopSequences: ["\n", ".", "!", "?"]
+          },
+          safetySettings: [
+            {
+              category: "HARM_CATEGORY_HARASSMENT",
+              threshold: "BLOCK_MEDIUM_AND_ABOVE"
+            }
+          ]
+        },
+        {
+          headers: {
+            'Content-Type': 'application/json'
+          }
+        }
+      );
+
+      const suggestion = response.data.candidates?.[0]?.content?.parts?.[0]?.text;
+      if (suggestion) {
+        setAiSuggestion(suggestion.trim());
+        setShowSuggestion(true);
+      }
+    } catch (error) {
+      console.error("Error fetching AI completion:", error);
+      if (error.response) {
+        console.error("API Error Details:", error.response.data);
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  }, [editor]);
+
+  const generateTemplate = async (prompt) => {
+    try {
+      setGeneratingTemplate(true);
+      const genAI = new GoogleGenerativeAI(import.meta.env.VITE_GEMINI_API_KEY);
+      const model = genAI.getGenerativeModel({ model: "gemini-pro" });
+
+      const templatePrompt = `Generate a story template for the following idea: ${prompt}
+      Return a valid JSON object with this structure (no additional text or formatting):
+      {
+        "templateName": "string",
+        "genre": "string",
+        "description": "string",
+        "structure": {
+          "title": "string",
+          "chapters": [
+            {
+              "chapterTitle": "string",
+              "scenes": ["string"]
+            }
+          ]
+        }
+      }`;
+
+      const result = await model.generateContent(templatePrompt);
+      const text = result.response.text();
+      
+      // Clean up and parse the response
+      const cleanJson = text.includes('```') 
+        ? text.replace(/```json\n|\n```|```/g, '').trim()
+        : text;
+      
+      const noTrailingCommas = cleanJson.replace(/,(\s*[}\]])/g, '$1');
+      const template = JSON.parse(noTrailingCommas);
+
+      // Format the content for the editor
+      const formattedContent = `
+        <div class="prose max-w-none">
+          <h1 class="text-3xl font-bold mb-4">${template.structure.title}</h1>
+          
+          <div class="mb-6">
+            <p class="text-gray-600"><strong>Genre:</strong> ${template.genre}</p>
+            <p class="text-gray-600 mb-4">${template.description}</p>
+          </div>
+
+          ${template.structure.chapters.map(chapter => `
+            <div class="mb-8">
+              <h2 class="text-2xl font-bold mb-4">${chapter.chapterTitle}</h2>
+              ${chapter.scenes.map(scene => `
+                <div class="mb-4">
+                  <h3 class="text-xl font-semibold mb-2">${scene}</h3>
+                  <div class="p-4 border border-dashed border-gray-300 rounded-lg">
+                    <p class="text-gray-500 italic">Start writing your scene here...</p>
+                  </div>
+                </div>
+              `).join('')}
+            </div>
+          `).join('')}
+        </div>
+      `;
+
+      // Update editor content
+      editor?.commands.setContent(formattedContent);
+      setShowTemplateModal(false);
+      
+      // Save the template
+      await api.post(`${import.meta.env.VITE_API_URL}/api/templates`, {
+        templateName: template.templateName,
+        genre: template.genre,
+        description: template.description,
+        structure: template.structure
+      });
+
+    } catch (error) {
+      console.error('Error generating template:', error);
+      alert('Failed to generate template. Please try again.');
+    } finally {
+      setGeneratingTemplate(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-white">
+      {/* Add AI status indicator */}
+      <div className="fixed bottom-4 right-4 z-50">
+        <div 
+          className={`flex items-center gap-2 px-3 py-2 rounded-full shadow-lg ${
+            isAIEnabled ? 'bg-purple-500 text-white' : 'bg-gray-100 text-gray-600'
+          }`}
+        >
+          <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+            <path d="M10 12a2 2 0 100-4 2 2 0 000 4z" />
+            <path fillRule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clipRule="evenodd" />
+          </svg>
+          <span className="text-sm font-medium">
+            AI {isAIEnabled ? 'Enabled' : 'Disabled'}
+          </span>
+          <kbd className="text-xs bg-black/20 px-1.5 py-0.5 rounded">
+            ⌘/
+          </kbd>
+        </div>
+      </div>
+
+      {/* Update suggestion popup */}
+      <AnimatePresence>
+        {showSuggestion && isAIEnabled && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            className="absolute z-50"
+            style={{
+              left: cursorPosition.x,
+              top: cursorPosition.y + 24,
+            }}
+          >
+            <div className="bg-white rounded-lg shadow-lg border border-gray-200 p-4 max-w-md">
+              <div className="flex items-center gap-2 mb-3">
+                {isLoading ? (
+                  <div className="flex items-center gap-2">
+                    <div className="w-4 h-4 rounded-full bg-purple-500 animate-pulse" />
+                    <span className="text-sm font-medium text-gray-600">Thinking...</span>
+                  </div>
+                ) : (
+                  <>
+                    <svg className="w-5 h-5 text-purple-500" fill="currentColor" viewBox="0 0 20 20">
+                      <path d="M10 12a2 2 0 100-4 2 2 0 000 4z" />
+                      <path fillRule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clipRule="evenodd" />
+                    </svg>
+                    <span className="text-sm font-medium text-gray-600">AI Suggestion</span>
+                  </>
+                )}
+              </div>
+              
+              {context && (
+                <div className="mb-2 text-xs text-gray-500 bg-gray-50 p-2 rounded">
+                  Context: "{context}"
+                </div>
+              )}
+              
+              <p className="text-gray-700 mb-3 font-medium">
+                {aiSuggestion}
+              </p>
+              
+              <div className="flex justify-between items-center">
+                <div className="text-xs text-gray-500">
+                  Press ⌘/ for new suggestions
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => setShowSuggestion(false)}
+                    className="px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-100 rounded-md transition-colors"
+                  >
+                    Dismiss (Esc)
+                  </button>
+                  <button
+                    onClick={acceptSuggestion}
+                    className="px-3 py-1.5 text-sm bg-purple-500 text-white rounded-md hover:bg-purple-600 transition-colors flex items-center gap-1"
+                  >
+                    <span>Accept</span>
+                    <kbd className="text-xs bg-purple-600 px-1.5 py-0.5 rounded">⌘↵</kbd>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -610,6 +1091,14 @@ function TextEditor() {
                 {userRole === 'reviewer' ? 'Reviewer Access - Read Only' : 'Read Only Access'}
               </div>
             )}
+
+            {/* Add Template Button */}
+            <button
+              onClick={() => setShowTemplateModal(true)}
+              className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
+            >
+              <span>Generate Template</span>
+            </button>
           </div>
 
           {userRole === 'author' && (
@@ -644,6 +1133,53 @@ function TextEditor() {
           ))}
         </div>
 
+        <AnimatePresence>
+          {isFeedbackModalOpen && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center"
+            >
+              <motion.div
+                initial={{ scale: 0.95 }}
+                animate={{ scale: 1 }}
+                exit={{ scale: 0.95 }}
+                className="bg-white rounded-lg w-full max-w-2xl max-h-[80vh] overflow-y-auto m-4"
+              >
+                <div className="p-6">
+                  <div className="flex justify-between items-center mb-4">
+                    <h2 className="text-2xl font-bold">Reader Feedback</h2>
+                    <button
+                      onClick={() => setIsFeedbackModalOpen(false)}
+                      className="text-gray-500 hover:text-gray-700"
+                    >
+                      ×
+                    </button>
+                  </div>
+                  <Feedback
+                    documentId={documentId}
+                    userId={JSON.parse(localStorage.getItem('user'))?._id}
+                    userRole={userRole}
+                    isModal={true}
+                  />
+                </div>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {userRole === 'reader' && (
+          <div className="mt-8">
+            <Feedback 
+              documentId={documentId}
+              userId={JSON.parse(localStorage.getItem('user'))?._id}
+              userRole={userRole}
+              isModal={false}
+            />
+          </div>
+        )}
+
         <ShareModal
           isOpen={isShareModalOpen}
           onClose={() => setIsShareModalOpen(false)}
@@ -675,6 +1211,53 @@ function TextEditor() {
                   <div className="absolute bottom-0 right-4 transform translate-y-1/2 rotate-45 w-2 h-2 bg-gray-800" />
                 </div>
               </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Template Generation Modal */}
+        <AnimatePresence>
+          {showTemplateModal && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center"
+            >
+              <motion.div
+                initial={{ scale: 0.95 }}
+                animate={{ scale: 1 }}
+                exit={{ scale: 0.95 }}
+                className="bg-white rounded-lg w-full max-w-lg p-6 m-4"
+              >
+                <h2 className="text-2xl font-bold mb-4">Generate Template</h2>
+                <div className="mb-4">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Enter your story idea
+                  </label>
+                  <textarea
+                    value={templatePrompt}
+                    onChange={(e) => setTemplatePrompt(e.target.value)}
+                    className="w-full h-32 p-2 border rounded-lg resize-none"
+                    placeholder="Describe your story idea..."
+                  />
+                </div>
+                <div className="flex justify-end gap-2">
+                  <button
+                    onClick={() => setShowTemplateModal(false)}
+                    className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={() => generateTemplate(templatePrompt)}
+                    disabled={generatingTemplate || !templatePrompt.trim()}
+                    className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50"
+                  >
+                    {generatingTemplate ? 'Generating...' : 'Generate'}
+                  </button>
+                </div>
+              </motion.div>
             </motion.div>
           )}
         </AnimatePresence>

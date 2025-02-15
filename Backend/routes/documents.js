@@ -5,12 +5,13 @@ import { nanoid } from 'nanoid';
 import auth from '../middleware/auth.js';
 import User from '../models/User.js';
 import { sendShareEmail } from '../config/nodemailer.js';
+import jwt from 'jsonwebtoken';
 
 const router = express.Router();
 
-// Helper function to get current IST time
+// Helper function for timestamps
 const getCurrentISTTime = () => {
-  return new Date(new Date().getTime() + (5.5 * 60 * 60 * 1000)); // Add 5:30 hours for IST
+  return new Date(new Date().getTime() + (5.5 * 60 * 60 * 1000));
 };
 
 // Create new document
@@ -29,6 +30,7 @@ router.post('/create', auth, async (req, res) => {
       editorAccess: [],
       reviewerAccess: [],
       readerAccess: [],
+      metadata: req.body.metadata || {},
       createdAt: getCurrentISTTime(),
       lastModified: getCurrentISTTime()
     });
@@ -275,6 +277,43 @@ router.get('/:documentId/users', auth, async (req, res) => {
   } catch (error) {
     console.error('Error fetching document users:', error);
     res.status(500).json({ message: 'Error fetching document users' });
+  }
+});
+
+// Add this POST route for creating documents
+router.post('/', async (req, res) => {
+  try {
+    const { title, content, templateId, metadata } = req.body;
+    
+    const documentId = nanoid(16);
+    
+    // Create document with minimal required fields
+    const document = new Document({
+      documentId,
+      title: title || 'Untitled Document',
+      data: content,
+      templateId,
+      metadata,
+      editorAccess: [],
+      reviewerAccess: [],
+      readerAccess: [],
+      createdAt: getCurrentISTTime(),
+      lastModified: getCurrentISTTime()
+    });
+    
+    const savedDoc = await document.save();
+
+    res.status(201).json({
+      documentId: savedDoc.documentId,
+      message: 'Document created successfully'
+    });
+  } catch (error) {
+    console.error('Error creating document:', error);
+    res.status(500).json({ 
+      error: 'Failed to create document',
+      details: error.message,
+      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+    });
   }
 });
 

@@ -103,21 +103,41 @@ function TextEditor() {
     if (!text.trim()) return "";
   
     try {
-      const geminiApiKey = process.env.GEMINI_API_KEY; // Ensure this is set in your environment
       const response = await axios.post(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateText?key=${geminiApiKey}`,
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${GEMINI_API_KEY}`,
         {
-          prompt: { text: `Complete this sentence: "${text}"` },
-          maxTokens: 50,
+          contents: [{
+            parts: [{
+              text: `Complete this sentence naturally: "${text}"`
+            }]
+          }],
+          generationConfig: {
+            temperature: 0.7,
+            maxOutputTokens: 50,
+            topP: 0.8,
+            topK: 40
+          }
         },
         {
-          headers: { "Content-Type": "application/json" },
+          headers: {
+            'Content-Type': 'application/json'
+          }
         }
       );
-      return response.data;
-    }  catch (error) {
+
+      // Check if response and its data exist
+      if (!response?.data?.candidates?.[0]?.content?.parts?.[0]?.text) {
+        console.warn('No valid completion received from API');
+        return "";
+      }
+
+      return response.data.candidates[0].content.parts[0].text;
+    } catch (error) {
       console.error("Error fetching AI completion:", error);
-      return "";
+      if (error.response) {
+        console.error("API Error Details:", error.response.data);
+      }
+      return ""; // Return empty string on error
     }
   };
   const [content, setContent] = useState("");
@@ -257,8 +277,19 @@ function TextEditor() {
 
     // Handle initial document load
     socket.on('load-document', (data) => {
-      editor.commands.setContent(data.content);
-      setActiveUsers(new Map(data.users.map(user => [user.id, user])));
+      if (!data) {
+        console.warn('Received null document data from socket');
+        return;
+      }
+
+      // Set content with fallback to empty string
+      if (editor) {
+        editor.commands.setContent(data?.content || '');
+      }
+
+      // Set active users with fallback to empty array
+      const users = data?.users || [];
+      setActiveUsers(new Map(users.map(user => [user?.id || '', user])));
     });
 
     // Handle real-time content updates

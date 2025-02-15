@@ -82,16 +82,12 @@ function Navbar() {
     }
   }, [isOpen]);
 
-  const navItems = user ? [
+  const navItems = [
     { name: "Write", path: "/write", icon: Pen },
     { name: "Explore", path: "/explore", icon: Compass },
     { name: "Workshops", path: "/workshops", icon: Users },
     { name: "Library", path: "/library", icon: BookOpen },
-  ] : [
-    { name: "Discover", path: "/discover" },
-    { name: "Success Stories", path: "/stories" },
-    { name: "Join Community", path: "/community" },
-  ];
+  ] 
 
   return (
     <>

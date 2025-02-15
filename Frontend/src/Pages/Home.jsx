@@ -94,12 +94,12 @@ function Home() {
           animate={{ opacity: 1 }}
           className="min-h-screen pt-20 flex items-center"
         >
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-32">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-0">
             <div className="flex flex-col items-center justify-center">
               <motion.h1 
                 initial={{ y: 50, opacity: 0 }}
                 animate={{ y: 0, opacity: 1 }}
-                className="text-5xl md:text-8xl text-center font-bold mb-14 leading-tight bg-gradient-to-r from-purple-400 via-pink-500 to-red-500 text-transparent bg-clip-text"
+                className="text-5xl md:text-8xl text-center font-bold pb-14 leading-tight bg-gradient-to-r from-purple-400 via-pink-500 to-red-500 text-transparent bg-clip-text"
               >
                 Where Stories Come<br />Alive Together
               </motion.h1>

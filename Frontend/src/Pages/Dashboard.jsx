@@ -5,6 +5,8 @@ import { MdOutlineDocumentScanner } from "react-icons/md";
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { RiShareLine } from "react-icons/ri";
+import { Trash2 } from "lucide-react";
+import { AlertTriangle } from "lucide-react";
 
 const Dashboard = () => {
   const [hoveredTemplate, setHoveredTemplate] = useState(null);
@@ -13,6 +15,8 @@ const Dashboard = () => {
   const [sharedDocs, setSharedDocs] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSharedLoading, setIsSharedLoading] = useState(true);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [documentToDelete, setDocumentToDelete] = useState(null);
   const navigate = useNavigate();
 
   const templates = [
@@ -177,6 +181,38 @@ const Dashboard = () => {
     }
   };
 
+  const handleDeleteDocument = async (documentId) => {
+    try {
+      const token = localStorage.getItem('token');
+      await axios.delete(
+        `${import.meta.env.VITE_API_URL}/api/documents/${documentId}`,
+        {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        }
+      );
+      
+      // Refresh documents after deletion
+      const [recentResponse, sharedResponse] = await Promise.all([
+        axios.get(`${import.meta.env.VITE_API_URL}/api/documents/recent`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        }),
+        axios.get(`${import.meta.env.VITE_API_URL}/api/documents/shared`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        })
+      ]);
+
+      setRecentDocs(recentResponse.data.documents);
+      setSharedDocs(sharedResponse.data.documents);
+      setShowDeleteModal(false);
+      setDocumentToDelete(null);
+    } catch (error) {
+      console.error('Error deleting document:', error);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-900 via-slate-800 to-slate-900">
       {/* Enhanced Animated Background Elements */}
@@ -286,6 +322,16 @@ const Dashboard = () => {
                           Last edited {formatDate(doc.updatedAt || doc.createdAt)}
                         </p>
                       </div>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setDocumentToDelete(doc);
+                          setShowDeleteModal(true);
+                        }}
+                        className="p-2 text-gray-400 hover:text-red-500 transition-colors"
+                      >
+                        <Trash2 className="w-5 h-5" />
+                      </button>
                     </div>
                   </motion.div>
                 ))}
@@ -344,6 +390,16 @@ const Dashboard = () => {
                           Shared by: {doc.author?.name || 'Unknown'}
                         </p>
                       </div>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setDocumentToDelete(doc);
+                          setShowDeleteModal(true);
+                        }}
+                        className="p-2 text-gray-400 hover:text-red-500 transition-colors"
+                      >
+                        <Trash2 className="w-5 h-5" />
+                      </button>
                     </div>
                   </motion.div>
                 ))}
@@ -356,6 +412,52 @@ const Dashboard = () => {
           </motion.div>
         </div>
       </div>
+
+      {/* Delete Confirmation Modal */}
+      <AnimatePresence>
+        {showDeleteModal && (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50"
+              onClick={() => setShowDeleteModal(false)}
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-md bg-white rounded-xl shadow-2xl z-[1001] p-6"
+            >
+              <div className="flex items-center gap-3 text-red-600 mb-4">
+                <AlertTriangle className="h-6 w-6" />
+                <h3 className="text-xl font-semibold">Delete Document</h3>
+              </div>
+              
+              <p className="text-gray-600 mb-6">
+                Are you sure you want to delete "{documentToDelete?.title || 'Untitled Document'}"? 
+                This action cannot be undone.
+              </p>
+              
+              <div className="flex justify-end gap-4">
+                <button
+                  onClick={() => setShowDeleteModal(false)}
+                  className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => handleDeleteDocument(documentToDelete?.documentId)}
+                  className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
+                >
+                  Delete
+                </button>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
     </div>
   );
 };

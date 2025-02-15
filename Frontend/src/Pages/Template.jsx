@@ -166,35 +166,12 @@ function Template() {
   return (
     <div className="container mx-auto p-6">
       {/* Enhanced Search Section */}
-      <div className="mb-12 space-y-6">
+      {/* <div className="mb-12 space-y-6"> */}
         <div className="max-w-2xl mx-auto">
-          {/* Template Generation Form */}
-          <form onSubmit={handleSearch} className="mb-8">
-            <h2 className="text-2xl font-bold text-gray-800 mb-4">Generate New Template</h2>
-            <div className="flex gap-2">
-              <input
-                type="text"
-                value={searchPrompt}
-                onChange={(e) => setSearchPrompt(e.target.value)}
-                placeholder="Enter your story idea..."
-                className="flex-1 p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-              />
-              <button 
-                type="submit"
-                className="bg-purple-600 text-white px-6 py-3 rounded-lg hover:bg-purple-700 transition-colors flex items-center gap-2"
-                disabled={loading}
-              >
-                {loading ? (
-                  <Loader className="w-5 h-5 animate-spin" />
-                ) : (
-                  'Generate Template'
-                )}
-              </button>
-            </div>
-          </form>
+          
 
           {/* Template Search Bar */}
-          <div className="relative">
+          <div className="relative mb-6">
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
               <Search className="h-5 w-5 text-gray-400" />
             </div>
@@ -205,7 +182,6 @@ function Template() {
               placeholder="Search templates by name, genre, or description..."
               className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
             />
-          </div>
         </div>
       </div>
 

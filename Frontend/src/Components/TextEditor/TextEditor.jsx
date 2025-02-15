@@ -1199,6 +1199,17 @@ function TextEditor() {
     </div>
   );
 
+  const handleDeleteDocument = async () => {
+    try {
+      const response = await api.delete(`/api/documents/${documentId}`);
+      if (response.status === 200) {
+        navigate('/dashboard');
+      }
+    } catch (error) {
+      console.error('Error deleting document:', error);
+    }
+  };
+
   return (
     <div className="flex flex-col min-h-screen bg-white relative pb-16">
       <StatusBar />

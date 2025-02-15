@@ -342,4 +342,134 @@ router.post('/api/documents', auth, async (req, res) => {
   }
 });
 
+// Delete document by documentId
+router.delete('/:documentId', auth, async (req, res) => {
+  try {
+    // Find document first to get its details
+    const document = await Document.findOne({ documentId: req.params.documentId });
+    
+    if (!document) {
+      return res.status(404).json({ message: 'Document not found' });
+    }
+
+    // Check if user is authorized to delete (only author can delete)
+    if (document.author.toString() !== req.user._id.toString()) {
+      return res.status(403).json({ 
+        message: 'Unauthorized: Only the document author can delete this document' 
+      });
+    }
+
+    // Start a session for transaction
+    const session = await Document.startSession();
+    session.startTransaction();
+
+    try {
+      // Delete document
+      await Document.findOneAndDelete({ documentId: req.params.documentId }, { session });
+
+      // Remove document reference from UserFiles for author
+      await UserFiles.updateOne(
+        { userId: document.author },
+        { 
+          $pull: { 
+            filesCreated: document._id,
+            filesShared: document._id 
+          } 
+        },
+        { session }
+      );
+
+      // Remove document reference from UserFiles for all users who had access
+      const usersWithAccess = [
+        ...document.editorAccess,
+        ...document.reviewerAccess,
+        ...document.readerAccess
+      ];
+
+      if (usersWithAccess.length > 0) {
+        await UserFiles.updateMany(
+          { userId: { $in: usersWithAccess } },
+          { 
+            $pull: { 
+              filesShared: document._id 
+            } 
+          },
+          { session }
+        );
+      }
+
+      // Commit the transaction
+      await session.commitTransaction();
+      session.endSession();
+
+      res.json({ 
+        message: 'Document deleted successfully',
+        documentId: req.params.documentId 
+      });
+
+    } catch (error) {
+      // If an error occurs, abort the transaction
+      await session.abortTransaction();
+      session.endSession();
+      throw error;
+    }
+
+  } catch (error) {
+    console.error('Error deleting document:', error);
+    res.status(500).json({ 
+      message: 'Error deleting document',
+      error: error.message 
+    });
+  }
+});
+
+// Remove user access from document
+router.delete('/:documentId/access/:userId', auth, async (req, res) => {
+  try {
+    const document = await Document.findOne({ documentId: req.params.documentId });
+    
+    if (!document) {
+      return res.status(404).json({ message: 'Document not found' });
+    }
+
+    // Check if requester is the author
+    if (document.author.toString() !== req.user._id.toString()) {
+      return res.status(403).json({ 
+        message: 'Only the author can remove access' 
+      });
+    }
+
+    // Remove user from all access arrays
+    document.editorAccess = document.editorAccess.filter(
+      id => id.toString() !== req.params.userId
+    );
+    document.reviewerAccess = document.reviewerAccess.filter(
+      id => id.toString() !== req.params.userId
+    );
+    document.readerAccess = document.readerAccess.filter(
+      id => id.toString() !== req.params.userId
+    );
+
+    // Remove document from user's shared files
+    await UserFiles.updateOne(
+      { userId: req.params.userId },
+      { $pull: { filesShared: document._id } }
+    );
+
+    await document.save();
+
+    res.json({ 
+      message: 'User access removed successfully',
+      document 
+    });
+
+  } catch (error) {
+    console.error('Error removing user access:', error);
+    res.status(500).json({ 
+      message: 'Error removing user access',
+      error: error.message 
+    });
+  }
+});
+
 export default router; 

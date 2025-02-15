@@ -85,6 +85,7 @@ function TextEditor() {
       name: user.name,
     };
   });
+  const [feedbackList, setFeedbackList] = useState([]);
 
   //Auto Complete Cursor
 
@@ -899,6 +900,21 @@ function TextEditor() {
     }
   };
 
+  // Add this effect to fetch feedback when the document loads
+  useEffect(() => {
+    if (documentId && userRole === 'reader') {
+      const fetchFeedback = async () => {
+        try {
+          const response = await api.get(`${import.meta.env.VITE_API_URL}/api/feedback/${documentId}`);
+          setFeedbackList(response.data);
+        } catch (error) {
+          console.error('Error fetching feedback:', error);
+        }
+      };
+      fetchFeedback();
+    }
+  }, [documentId, userRole]);
+
   return (
     <div className="min-h-screen bg-white">
       {/* Add AI status indicator */}
@@ -1176,6 +1192,30 @@ function TextEditor() {
           ))}
         </div>
 
+        {/* Add Feedback Section for Readers */}
+        {userRole === 'reader' && (
+          <div className="mt-8 bg-white rounded-lg shadow-lg p-6">
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-2xl font-bold text-gray-800">Reader Feedback</h2>
+              <button
+                onClick={() => setIsFeedbackModalOpen(true)}
+                className="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors"
+              >
+                Add Feedback
+              </button>
+            </div>
+
+            {/* Feedback List */}
+            <Feedback 
+              documentId={documentId}
+              userId={JSON.parse(localStorage.getItem('user'))?._id}
+              userRole={userRole}
+              isModal={false}
+            />
+          </div>
+        )}
+
+        {/* Feedback Modal */}
         <AnimatePresence>
           {isFeedbackModalOpen && (
             <motion.div
@@ -1192,10 +1232,10 @@ function TextEditor() {
               >
                 <div className="p-6">
                   <div className="flex justify-between items-center mb-4">
-                    <h2 className="text-2xl font-bold">Reader Feedback</h2>
+                    <h2 className="text-2xl font-bold">Add Feedback</h2>
                     <button
                       onClick={() => setIsFeedbackModalOpen(false)}
-                      className="text-gray-500 hover:text-gray-700"
+                      className="text-gray-500 hover:text-gray-700 text-xl"
                     >
                       ×
                     </button>
@@ -1205,23 +1245,16 @@ function TextEditor() {
                     userId={JSON.parse(localStorage.getItem('user'))?._id}
                     userRole={userRole}
                     isModal={true}
+                    onFeedbackSubmitted={() => {
+                      setIsFeedbackModalOpen(false);
+                      // Optionally refresh feedback list
+                    }}
                   />
                 </div>
               </motion.div>
             </motion.div>
           )}
         </AnimatePresence>
-
-        {userRole === 'reader' && (
-          <div className="mt-8">
-            <Feedback 
-              documentId={documentId}
-              userId={JSON.parse(localStorage.getItem('user'))?._id}
-              userRole={userRole}
-              isModal={false}
-            />
-          </div>
-        )}
 
         <ShareModal
           isOpen={isShareModalOpen}
@@ -1305,7 +1338,7 @@ function TextEditor() {
           )}
         </AnimatePresence>
       </motion.div>
-      </div>
+    </div>
   );
 }
 

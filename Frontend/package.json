@@ -10,6 +10,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@google/generative-ai": "^0.21.0",
     "@liveblocks/client": "^2.18.1",
     "@liveblocks/react": "^2.18.1",
     "@liveblocks/react-tiptap": "^2.18.1",
@@ -36,7 +37,6 @@
     "react-dom": "^19.0.0",
     "react-icons": "^5.4.0",
     "react-router-dom": "^7.1.5",
-    "socket.io-client": "^4.8.1",
     "socket.io-client": "^4.8.1",
     "tailwind-merge": "^3.0.1",
     "y-codemirror": "^3.0.1",

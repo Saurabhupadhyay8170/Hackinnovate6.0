@@ -9,6 +9,7 @@ import documentsRoutes from './routes/documents.js';
 import Document from './models/Document.js';
 import feedbackRoutes from './routes/feedback.routes.js';
 import './config/nodemailer.js';
+import templateRoutes from './routes/template.routes.js';
 
 dotenv.config();
 
@@ -165,6 +166,8 @@ io.on("connection", (socket) => {
 app.use('/api/auth', authRoutes);
 app.use('/api/documents', documentsRoutes);
 app.use('/api/feedback', feedbackRoutes);
+app.use('/api/templates', templateRoutes);
+
 
 // Connect to MongoDB using your Atlas URI
 mongoose.connect(process.env.MONGODB_URI, {

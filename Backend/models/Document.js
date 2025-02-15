@@ -38,6 +38,14 @@ const documentSchema = new mongoose.Schema({
   lastModified: {
     type: Date,
     default: Date.now
+  },
+  templateId: {
+    type: String,
+    ref: 'Template'
+  },
+  metadata: {
+    type: Object,
+    default: {}
   }
 });
 

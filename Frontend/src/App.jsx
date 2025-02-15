@@ -35,7 +35,7 @@ function App() {
               <TextEditor />
             </ProtectedRoute>
           } />
-          <Route path="/template" element={
+          <Route path="/templates" element={
             // <ProtectedRoute>
               <Template />
             /* </ProtectedRoute> */

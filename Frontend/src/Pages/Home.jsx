@@ -15,7 +15,8 @@ function Home() {
     });
   }, [scrollY]);
 
-  const content = [
+  // Define the content array for features
+  const features = [
     {
       title: "Craft Your Story",
       description: "Step into a world where your imagination knows no bounds. Our real-time collaborative platform brings writers together, allowing you to weave tales with fellow storytellers while seeing their creative process unfold before your eyes.",
@@ -59,7 +60,7 @@ function Home() {
             repeat: Infinity,
             ease: "easeInOut"
           }}
-          className="absolute -top-1/4 -right-1/4 w-[800px] h-[800px] bg-purple-500/20 rounded-full blur-3xl"
+          className="absolute top-0 left-0 w-[50%] aspect-square bg-gradient-to-br from-purple-500/10 to-transparent rounded-full blur-3xl"
         />
         <motion.div
           animate={{
@@ -71,7 +72,7 @@ function Home() {
             repeat: Infinity,
             ease: "easeInOut",
           }}
-          className="absolute -bottom-1/4 -left-1/4 w-[800px] h-[800px] bg-pink-500/20 rounded-full blur-3xl"
+          className="absolute top-0 left-0 w-[50%] aspect-square bg-gradient-to-br from-purple-500/10 to-transparent rounded-full blur-3xl"
         />
       </div>
 
@@ -96,7 +97,7 @@ function Home() {
         >
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-0">
             <div className="flex flex-col items-center justify-center">
-              <motion.h1 collabora
+              <motion.h1
                 initial={{ y: 50, opacity: 0 }}
                 animate={{ y: 0, opacity: 1 }}
                 className="text-5xl md:text-8xl text-center font-bold pb-14 leading-tight bg-gradient-to-r from-purple-400 via-pink-500 to-red-500 text-transparent bg-clip-text"
@@ -199,7 +200,10 @@ function Home() {
         </ContainerScroll>
 
         {/* Feature Showcase */}
-        <FeatureShowcase content={content} />
+        {/* <FeatureShowcase content={features} /> */}
+
+        {/* Sticky Scrolling */}
+        <StickyScrolling content={features} />
       </div>
     </div>
   );

@@ -46,7 +46,7 @@ export const ContainerScroll = ({ titleComponent, children }) => {
             repeat: Infinity,
             ease: "easeInOut"
           }}
-          className="absolute -top-1/4 -right-1/4 w-[800px] h-[800px] bg-purple-500/20 rounded-full blur-3xl"
+          className="absolute top-0 left-0 w-[50%] aspect-square bg-purple-500/20 rounded-full blur-3xl"
         />
         <motion.div
           animate={{
@@ -58,7 +58,7 @@ export const ContainerScroll = ({ titleComponent, children }) => {
             repeat: Infinity,
             ease: "easeInOut",
           }}
-          className="absolute -bottom-1/4 -left-1/4 w-[800px] h-[800px] bg-pink-500/20 rounded-full blur-3xl"
+          className="absolute top-0 left-0 w-[50%] aspect-square bg-purple-500/20 rounded-full blur-3xl"
         />
       </div>
 
@@ -99,7 +99,7 @@ const Card = ({ rotate, scale, children }) => {
       }}
       className="max-w-5xl -mt-12 mx-auto h-[30rem] md:h-[40rem] w-full rounded-[30px] p-2 md:p-6 bg-gradient-to-r from-slate-900/30 to-slate-800/30 backdrop-blur-sm border border-slate-700/50 shadow-[0_8px_30px_rgb(0,0,0,0.12)]"
     >
-      <div className="h-full w-full overflow-hidden rounded-2xl bg-gradient-to-b from-slate-900/50 to-slate-800/50 backdrop-blur-sm p-4">
+      <div className="h-full w-full overflow-hidden rounded-2xl bg-gradient-to-b from-slate-600/40 to-slate-700/60 backdrop-blur-sm p-4">
         {children}
       </div>
     </motion.div>

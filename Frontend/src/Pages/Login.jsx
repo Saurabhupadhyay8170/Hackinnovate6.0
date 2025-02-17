@@ -61,7 +61,7 @@ function Login() {
             repeat: Infinity,
             ease: "easeInOut"
           }}
-          className="absolute -top-1/4 -right-1/4 w-[800px] h-[800px] bg-purple-500/20 rounded-full blur-3xl"
+          className="absolute top-0 left-0 w-[50%] aspect-square bg-purple-500/20 rounded-full blur-3xl"
         />
         <motion.div
           animate={{
@@ -73,7 +73,7 @@ function Login() {
             repeat: Infinity,
             ease: "easeInOut",
           }}
-          className="absolute -bottom-1/4 -left-1/4 w-[800px] h-[800px] bg-pink-500/20 rounded-full blur-3xl"
+          className="absolute bottom-0 left-0 w-[50%] aspect-square bg-pink-500/20 rounded-full blur-3xl"
         />
       </div>
 

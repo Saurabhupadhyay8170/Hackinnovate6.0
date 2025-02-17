@@ -228,7 +228,7 @@ const Dashboard = () => {
             repeat: Infinity,
             ease: "easeInOut"
           }}
-          className="absolute -top-1/4 -right-1/4 w-[1000px] h-[1000px] bg-gradient-to-br from-purple-500/10 to-transparent rounded-full blur-3xl"
+          className="absolute top-0 left-0 w-[50%] aspect-square bg-gradient-to-br from-purple-500/10 to-transparent rounded-full blur-3xl"
         />
         <motion.div
           animate={{
@@ -241,7 +241,7 @@ const Dashboard = () => {
             repeat: Infinity,
             ease: "easeInOut",
           }}
-          className="absolute -bottom-1/4 -left-1/4 w-[1000px] h-[1000px] bg-gradient-to-tr from-pink-500/10 to-transparent rounded-full blur-3xl"
+          className="absolute bottom-0 left-0 w-[50%] aspect-square bg-gradient-to-tr from-pink-500/10 to-transparent rounded-full blur-3xl"
         />
       </div>
 

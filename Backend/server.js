@@ -60,14 +60,36 @@ io.on("connection", (socket) => {
   socket.on('join-document', async ({ documentId, user }) => {
     socket.join(documentId);
     
+    // Assign a random color to the user
+    const userColor = userColors[Math.floor(Math.random() * userColors.length)];
+    
+    // Store user information
+    if (!activeUsers.has(documentId)) {
+      activeUsers.set(documentId, new Map());
+    }
+    
+    const documentUsers = activeUsers.get(documentId);
+    documentUsers.set(user._id, {
+      id: user._id,
+      name: user.name,
+      color: userColor,
+      socketId: socket.id,
+      lastActive: Date.now()
+    });
+  
     // Load existing document
     const document = await Document.findOne({ documentId });
-    if (document) {
-      socket.emit('load-document', {
-        content: document.content,
-        users: [] // Add your active users logic here
-      });
-    }
+  
+    // Send current document state and ALL active users to the newly joined user
+    socket.emit('load-document', {
+      content: document?.content || '',
+      users: Array.from(documentUsers.values())
+    });
+  
+    // Broadcast to all clients (including sender) in the room that a user joined
+    io.to(documentId).emit('active-users-update', {
+      users: Array.from(documentUsers.values())
+    });
   });
 
   socket.on('send-changes', ({ documentId, content, userId }) => {
@@ -91,10 +113,29 @@ io.on("connection", (socket) => {
   });
 
   socket.on('cursor-move', (data) => {
-    socket.to(data.documentId).emit('cursor-update', data);
+    const documentUsers = activeUsers.get(data.documentId);
+    if (!documentUsers || !documentUsers.has(data.userId)) return;
+    
+    const user = documentUsers.get(data.userId);
+    socket.to(data.documentId).emit('cursor-update', {
+      ...data,
+      color: user.color,
+      name: user.name
+    });
   });
 
   socket.on('disconnect', () => {
+    activeUsers.forEach((documentUsers, documentId) => {
+      documentUsers.forEach((user, userId) => {
+        if (user.socketId === socket.id) {
+          documentUsers.delete(userId);
+          io.to(documentId).emit('user-left', userId);
+        }
+      });
+      if (documentUsers.size === 0) {
+        activeUsers.delete(documentId);
+      }
+    });
     console.log('Client disconnected:', socket.id);
   });
 });

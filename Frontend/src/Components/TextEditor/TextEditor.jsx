@@ -271,46 +271,65 @@ function TextEditor() {
   // Socket.IO effect
   useEffect(() => {
     if (!documentId || !editor) return;
-
+  
     // Join document with user info
     socket.emit('join-document', {
       documentId,
       user: localUser
     });
-
-    // Handle initial document load
+  
+    // Handle initial document load and user updates
     socket.on('load-document', (data) => {
       if (!data) return;
       editor.commands.setContent(data?.content || '');
-      setActiveUsers(new Map(data?.users?.map(user => [user?.id || '', user]) || []));
+      setActiveUsers(new Map(data?.users?.map(user => [user.id, user]) || []));
     });
-
-    // Handle real-time content updates
-    socket.on('receive-changes', (update) => {
-      if (update.userId !== localUser._id) {
-        requestAnimationFrame(() => {
-          editor.commands.setContent(update.content);
-        });
-      }
+  
+    // Handle active users updates
+    socket.on('active-users-update', ({ users }) => {
+      setActiveUsers(new Map(users.map(user => [user.id, user])));
     });
-
-    // Handle cursor updates
-    socket.on('cursor-update', ({ userId, position, color, name, selection }) => {
+  
+    // Handle user left
+    socket.on('user-left', (userId) => {
       setActiveUsers(prev => {
         const next = new Map(prev);
-        next.set(userId, { 
-          ...next.get(userId) || { id: userId, name },
-          position,
-          color,
-          selection,
-          lastActive: Date.now()
-        });
+        next.delete(userId);
         return next;
       });
     });
-
+  
+    // Handle real-time content updates
+    socket.on('receive-changes', (update) => {
+      if (update.userId !== localUser._id) {
+        editor.commands.setContent(update.content);
+      }
+    });
+  
+    // Handle cursor updates
+    socket.on('cursor-update', ({ userId, position, color, name }) => {
+      if (userId !== localUser._id) {
+        setActiveUsers(prev => {
+          const next = new Map(prev);
+          const existingUser = next.get(userId) || {};
+          next.set(userId, { 
+            ...existingUser,
+            id: userId,
+            position,
+            color,
+            name,
+            lastActive: Date.now()
+          });
+          return next;
+        });
+      }
+    });
+  
+    // Cleanup on unmount
     return () => {
       socket.off('load-document');
+      socket.off('active-users-update');
+      socket.off('user-left');
       socket.off('receive-changes');
       socket.off('cursor-update');
       socket.emit('leave-document', { documentId, userId: localUser._id });
@@ -500,8 +519,11 @@ function TextEditor() {
     };
   }, [documentId, editor, localUser._id]);
 
+  // Mouse movement tracking
   useEffect(() => {
     const handleMouseMove = throttle((e) => {
+      if (!editor || !documentId) return;
+
       const editorContent = document.querySelector('.ProseMirror');
       if (!editorContent) return;
 
@@ -511,53 +533,28 @@ function TextEditor() {
         y: e.clientY - rect.top + editorContent.scrollTop
       };
 
-      requestAnimationFrame(() => {
-        socket.emit('cursor-move', {
-          documentId,
-          position,
-          userId: localUser._id,
-          selection: getSelectionRect(editorContent)
-        });
+      socket.emit('cursor-move', {
+        documentId,
+        userId: localUser._id,
+        position
       });
-    }, 16); // 60fps update rate
-
-    const getSelectionRect = (editorContent) => {
-      const selection = window.getSelection();
-      if (!selection.rangeCount) return null;
-
-      const range = selection.getRangeAt(0);
-      const rect = range.getBoundingClientRect();
-      const editorRect = editorContent.getBoundingClientRect();
-
-      return {
-        left: rect.left - editorRect.left + editorContent.scrollLeft,
-        top: rect.top - editorRect.top + editorContent.scrollTop,
-        width: rect.width,
-        height: rect.height
-      };
-    };
+    }, 50);
 
     const editorContent = document.querySelector('.ProseMirror');
     if (editorContent) {
       editorContent.addEventListener('mousemove', handleMouseMove);
-      editorContent.addEventListener('keyup', handleMouseMove);
-      editorContent.addEventListener('click', handleMouseMove);
-      editorContent.addEventListener('scroll', handleMouseMove);
     }
 
     return () => {
       if (editorContent) {
         editorContent.removeEventListener('mousemove', handleMouseMove);
-        editorContent.removeEventListener('keyup', handleMouseMove);
-        editorContent.removeEventListener('click', handleMouseMove);
-        editorContent.removeEventListener('scroll', handleMouseMove);
       }
     };
-  }, [documentId, localUser._id]);
+  }, [documentId, editor, localUser._id, socket]);
 
   const CollaborativeCursor = ({ user }) => {
     if (!user.position || user.id === localUser._id) return null;
-
+  
     return (
       <motion.div
         initial={{ opacity: 0, scale: 0.8 }}
@@ -576,86 +573,38 @@ function TextEditor() {
           pointerEvents: 'none',
         }}
       >
-        {/* Exact Figma cursor design */}
-        <div style={{ position: 'relative' }}>
-          <svg
-            width="20"
-            height="28"
-            viewBox="0 0 20 28"
-            fill="none"
-            xmlns="http://www.w3.org/2000/svg"
-            style={{
-              filter: 'drop-shadow(0 1px 3px rgba(0,0,0,0.15))',
-              transform: 'translate(-4px, -4px)',
-            }}
-          >
-            <path
-              d="M3.16669 2.33398L3.16669 23.334L7.83335 18.834L12.3334 25.834L15.8334 24.0007L11.3334 17.0007L16.8334 17.0007L3.16669 2.33398Z"
-              fill={user.color}
-              stroke="white"
-              strokeWidth="1.5"
-              strokeLinejoin="round"
-              strokeLinecap="round"
-            />
-          </svg>
-
-          {/* Figma-style name tag */}
-          <motion.div
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{
-              delay: 0.05,
-              type: "spring",
-              stiffness: 500,
-              damping: 30
-            }}
-            style={{
-              position: 'absolute',
-              left: '20px',
-              top: '-8px',
-              background: user.color,
-              color: 'white',
-              padding: '4px 8px',
-              borderRadius: '4px',
-              fontSize: '12px',
-              fontWeight: '500',
-              lineHeight: '1.2',
-              whiteSpace: 'nowrap',
-              boxShadow: '0 1px 3px rgba(0,0,0,0.12)',
-              transform: 'translateY(-100%)',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '4px',
-            }}
-          >
-            <div
-              style={{
-                width: '4px',
-                height: '4px',
-                borderRadius: '50%',
-                background: 'white',
-                opacity: 0.7
-              }}
-            />
-            {user.name}
-          </motion.div>
-
-          {/* Figma-style selection highlight */}
-          {user.selection && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ duration: 0.1 }}
-              style={{
-                position: 'absolute',
-                background: `${user.color}15`,
-                border: `1.5px solid ${user.color}40`,
-                borderRadius: '2px',
-                ...user.selection,
-                pointerEvents: 'none',
-              }}
-            />
-          )}
+        {/* Cursor */}
+        <svg
+          width="24"
+          height="36"
+          viewBox="0 0 24 36"
+          fill="none"
+          xmlns="http://www.w3.org/2000/svg"
+        >
+          <path
+            d="M5.65376 12.3673H5.46026L5.31717 12.4976L0.500002 16.8829L0.500002 1.19522L11.7841 12.3673H5.65376Z"
+            fill={user.color}
+            stroke="white"
+          />
+        </svg>
+  
+        {/* Name tag */}
+        <div
+          style={{
+            position: 'absolute',
+            left: 20,
+            top: 20,
+            backgroundColor: user.color,
+            padding: '4px 8px',
+            borderRadius: '4px',
+            fontSize: '12px',
+            color: 'white',
+            whiteSpace: 'nowrap',
+            boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+            transform: 'translateY(-50%)',
+          }}
+        >
+          {user.name}
         </div>
       </motion.div>
     );

@@ -280,25 +280,17 @@ function TextEditor() {
 
     // Handle initial document load
     socket.on('load-document', (data) => {
-      if (!data) {
-        console.warn('Received null document data from socket');
-        return;
-      }
-
-      // Set content with fallback to empty string
-      if (editor) {
-        editor.commands.setContent(data?.content || '');
-      }
-
-      // Set active users with fallback to empty array
-      const users = data?.users || [];
-      setActiveUsers(new Map(users.map(user => [user?.id || '', user])));
+      if (!data) return;
+      editor.commands.setContent(data?.content || '');
+      setActiveUsers(new Map(data?.users?.map(user => [user?.id || '', user]) || []));
     });
 
     // Handle real-time content updates
     socket.on('receive-changes', (update) => {
       if (update.userId !== localUser._id) {
-        editor.commands.setContent(update.content);
+        requestAnimationFrame(() => {
+          editor.commands.setContent(update.content);
+        });
       }
     });
 
@@ -306,9 +298,8 @@ function TextEditor() {
     socket.on('cursor-update', ({ userId, position, color, name, selection }) => {
       setActiveUsers(prev => {
         const next = new Map(prev);
-        const user = next.get(userId) || { id: userId, name };
         next.set(userId, { 
-          ...user, 
+          ...next.get(userId) || { id: userId, name },
           position,
           color,
           selection,
@@ -318,7 +309,6 @@ function TextEditor() {
       });
     });
 
-    // Cleanup on unmount
     return () => {
       socket.off('load-document');
       socket.off('receive-changes');
@@ -329,12 +319,12 @@ function TextEditor() {
 
   const handleContentChange = useCallback((newContent) => {
     setContent(newContent);
-    // Save to server
     socket.emit('send-changes', {
       documentId,
-      content: newContent
+      content: newContent,
+      userId: localUser._id
     });
-  }, [documentId]);
+  }, [documentId, localUser._id]);
 
   const saveDocument = async (content) => {
     try {

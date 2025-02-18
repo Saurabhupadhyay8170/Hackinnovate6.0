@@ -58,134 +58,44 @@ io.on("connection", (socket) => {
   console.log("Client connected:", socket.id);
 
   socket.on('join-document', async ({ documentId, user }) => {
-    try {
-      if (!documentId || !user?._id) {
-        throw new Error('Document ID and user ID are required');
-      }
-
-      socket.join(documentId);
-      
-      // Convert string ID to ObjectId if necessary
-      const userId = mongoose.Types.ObjectId(user._id);
-
-      // Find or create the document
-      let document = await Document.findOne({ documentId });
-      
-      if (!document) {
-        document = await Document.create({
-          documentId,
-          author: userId,
-          title: 'Untitled Document',
-          content: '',
-          createdAt: new Date(),
-          lastModified: new Date()
-        });
-      }
-
-      // Send the document data to the client
+    socket.join(documentId);
+    
+    // Load existing document
+    const document = await Document.findOne({ documentId });
+    if (document) {
       socket.emit('load-document', {
         content: document.content,
-        title: document.title,
-        documentId: document.documentId
-      });
-
-    } catch (error) {
-      console.error('Error joining document:', error);
-      socket.emit('error', {
-        message: 'Error loading document',
-        details: error.message
+        users: [] // Add your active users logic here
       });
     }
   });
 
-  socket.on('send-changes', ({ documentId, content }) => {
-    const documentUsers = activeUsers.get(documentId);
-    if (!documentUsers) return;
-    const user = Array.from(documentUsers.values()).find(u => u.socketId === socket.id);
-    if (user) {
-      socket.to(documentId).emit('receive-changes', { content, userId: user.id });
-    }
-  });
-
-  socket.on('cursor-move', ({ documentId, position, userId, selection }) => {
-    const documentUsers = activeUsers.get(documentId);
-    if (!documentUsers || !documentUsers.has(userId)) return;
-    const user = documentUsers.get(userId);
-    user.position = position;
-    user.selection = selection;
-    user.lastActive = Date.now();
-    socket.to(documentId).emit('cursor-update', {
-      userId,
-      position,
-      selection,
-      color: user.color,
-      name: user.name
+  socket.on('send-changes', ({ documentId, content, userId }) => {
+    // Broadcast changes to all clients in the room EXCEPT sender
+    socket.to(documentId).emit('receive-changes', {
+      content,
+      userId
     });
+    
+    // Save changes to database
+    Document.findOneAndUpdate(
+      { documentId },
+      { 
+        $set: { 
+          content,
+          lastModified: new Date()
+        }
+      },
+      { upsert: true }
+    ).exec();
+  });
+
+  socket.on('cursor-move', (data) => {
+    socket.to(data.documentId).emit('cursor-update', data);
   });
 
   socket.on('disconnect', () => {
-    activeUsers.forEach((documentUsers, documentId) => {
-      documentUsers.forEach((user, userId) => {
-        if (user.socketId === socket.id) {
-          documentUsers.delete(userId);
-          io.to(documentId).emit('user-left', userId);
-          io.to(documentId).emit('users-update', Array.from(documentUsers.values()));
-        }
-      });
-    });
-    console.log("Client disconnected:", socket.id);
-  });
-
-  socket.on('save-document', async ({ documentId, content, title, userId }) => {
-    try {
-      if (!documentId) {
-        throw new Error('Document ID is required');
-      }
-
-      console.log('Saving document:', { documentId, contentLength: content?.length, title });
-
-      // Create the document if it doesn't exist, otherwise update it
-      const updatedDoc = await Document.findOneAndUpdate(
-        { documentId },
-        {
-          $set: {
-            title: title || 'Untitled Document',
-            content: content || '',
-            author: userId, // Make sure this is a valid MongoDB ObjectId
-            lastModified: new Date()
-          }
-        },
-        {
-          new: true, // Return the updated document
-          upsert: true, // Create if doesn't exist
-          runValidators: true,
-          setDefaultsOnInsert: true
-        }
-      ).exec(); // Add exec() to properly execute the query
-
-      console.log('Document saved:', updatedDoc);
-
-      // Broadcast the changes to all clients in the room
-      socket.to(documentId).emit('receive-changes', {
-        content: updatedDoc.content,
-        title: updatedDoc.title
-      });
-
-      // Send save confirmation to the sender
-      socket.emit('document-saved', {
-        success: true,
-        documentId: updatedDoc.documentId,
-        content: updatedDoc.content,
-        title: updatedDoc.title
-      });
-
-    } catch (error) {
-      console.error('Error saving document:', error);
-      socket.emit('document-saved', {
-        success: false,
-        error: error.message
-      });
-    }
+    console.log('Client disconnected:', socket.id);
   });
 });
 

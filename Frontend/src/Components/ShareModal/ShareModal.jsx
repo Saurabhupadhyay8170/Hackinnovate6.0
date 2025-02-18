@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { RiCloseLine, RiMailLine, RiCheckboxCircleLine } from 'react-icons/ri';
 import api from '../../utils/api';
+import io from '../../utils/socket';
 
 const ShareModal = ({ isOpen, onClose, onShare, documentTitle, documentId }) => {
   const [email, setEmail] = useState('');
@@ -32,42 +33,6 @@ const ShareModal = ({ isOpen, onClose, onShare, documentTitle, documentId }) => 
     }
   }, [isOpen, documentId]);
 
-  const handleShare = async (e) => {
-    e.preventDefault();
-    setIsSharing(true);
-    setError('');
-    
-    try {
-      await onShare(email, accessLevel);
-      
-      // Store the email before clearing it
-      setSharedWithEmail(email);
-      
-      // Fetch updated users list
-      const response = await api.get(`/api/documents/${documentId}/users`);
-      setDocumentUsers(response.data.users);
-      
-      // Clear form
-      setEmail('');
-      setAccessLevel('reader');
-      
-      // Show success state
-      setIsSuccess(true);
-      
-      // Close modal after delay
-      setTimeout(() => {
-        setIsSuccess(false);
-        setSharedWithEmail(''); // Clear stored email
-        onClose();
-      }, 2000);
-      
-    } catch (error) {
-      setError(error.message || 'Error sharing document');
-    } finally {
-      setIsSharing(false);
-    }
-  };
-
   // Reset states when modal closes
   useEffect(() => {
     if (!isOpen) {
@@ -76,8 +41,61 @@ const ShareModal = ({ isOpen, onClose, onShare, documentTitle, documentId }) => 
       setEmail('');
       setAccessLevel('reader');
       setIsSharing(false);
+      setSharedWithEmail('');
     }
   }, [isOpen]);
+
+  // Auto close modal after success
+  useEffect(() => {
+    let timeoutId;
+    if (isSuccess) {
+      timeoutId = setTimeout(() => {
+        setIsSuccess(false);
+        onClose();
+      }, 2000); // Close after 2 seconds
+    }
+    return () => {
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+      }
+    };
+  }, [isSuccess, onClose]);
+
+  const handleShare = async (e) => {
+    e.preventDefault();
+    setIsSharing(true);
+    setError('');
+    
+    try {
+      await onShare(email, accessLevel);
+      
+      // Emit socket event for real-time update
+      io.emit('document-shared', {
+        documentId,
+        sharedWith: email,
+        accessLevel
+      });
+      
+      // Store the email before clearing it
+      setSharedWithEmail(email);
+      
+      // Fetch updated users list
+      const response = await api.get(`/api/documents/${documentId}/users`);
+      setDocumentUsers(response.data.users);
+      
+      // Show success state
+      setIsSuccess(true);
+      
+      // Clear form
+      setEmail('');
+      setAccessLevel('reader');
+      
+    } catch (error) {
+      setError(error.message || 'Error sharing document');
+    } finally {
+      setIsSharing(false);
+    }
+  };
 
   const UserAvatar = ({ user }) => (
     <div className="relative group">

@@ -7,6 +7,7 @@ import axios from 'axios';
 import { RiShareLine } from "react-icons/ri";
 import { Trash2 } from "lucide-react";
 import { AlertTriangle } from "lucide-react";
+import socket from '../utils/socket';
 
 const Dashboard = () => {
   const [hoveredTemplate, setHoveredTemplate] = useState(null);
@@ -18,13 +19,6 @@ const Dashboard = () => {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [documentToDelete, setDocumentToDelete] = useState(null);
   const navigate = useNavigate();
-
-  const templates = [
-    { id: 1, name: "Resume", description: "Professional resume templates" },
-    { id: 2, name: "Project Proposal", description: "Business proposal formats" },
-    { id: 3, name: "Meeting Notes", description: "Organized meeting templates" },
-    { id: 4, name: "Business Letter", description: "Formal letter templates" },
-  ];
 
   // Fetch user's documents (both recent and shared)
   useEffect(() => {
@@ -75,6 +69,36 @@ const Dashboard = () => {
 
     fetchDocuments();
   }, [navigate]);
+
+  useEffect(() => {
+    // Listen for share updates
+    socket.on('share-update', async ({ documentId, sharedWith }) => {
+      // If the current user is the one being shared with
+      const currentUser = JSON.parse(localStorage.getItem('user'));
+      if (currentUser.email === sharedWith) {
+        try {
+          const token = localStorage.getItem('token');
+          // Use the correct endpoint for shared documents
+          const response = await axios.get(
+            `${import.meta.env.VITE_API_URL}/api/documents/shared`,
+            {
+              headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+              }
+            }
+          );
+          setSharedDocs(response.data.documents);
+        } catch (error) {
+          console.error('Error fetching shared documents:', error);
+        }
+      }
+    });
+
+    return () => {
+      socket.off('share-update');
+    };
+  }, []);
 
   const handleCreateDocument = async () => {
     try {

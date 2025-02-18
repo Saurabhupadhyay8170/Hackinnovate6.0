@@ -10,6 +10,7 @@ import feedbackRoutes from './routes/feedback.routes.js';
 import templateRoutes from './routes/template.routes.js';
 import Document from './models/Document.js';
 import './config/nodemailer.js';
+import { initSocket } from './config/socket.js';
 
 dotenv.config();
 
@@ -43,15 +44,10 @@ const userColors = [
 
 // Create HTTP and Socket.IO server
 const server = http.createServer(app);
-const io = new Server(server, {
-  cors: {
-    origin: [process.env.CORS_ORIGIN, "http://localhost:3000"],
-    methods: ["GET", "POST"],
-    credentials: true,
-    transports: ['websocket', 'polling']
-  },
-  allowEIO3: true
-});
+const io = initSocket(server);
+
+// Make io available to routes
+app.set('io', io);
 
 // ✅ Socket.IO connection handling
 io.on("connection", (socket) => {
@@ -137,6 +133,15 @@ io.on("connection", (socket) => {
       }
     });
     console.log('Client disconnected:', socket.id);
+  });
+
+  socket.on('document-shared', ({ documentId, sharedWith, accessLevel }) => {
+    // Broadcast to all connected clients that a new user has been given access
+    io.emit('share-update', {
+      documentId,
+      sharedWith,
+      accessLevel
+    });
   });
 });
 

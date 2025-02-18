@@ -20,6 +20,7 @@ import { io } from "socket.io-client";
 import axios from 'axios';
 import { Sparkles, Menu, FileDown, X } from 'lucide-react';
 import html2pdf from 'html2pdf.js';
+import AccessDenied from '../AccessDenied/AccessDenied';
 
 const socket = io(import.meta.env.VITE_API_URL || "http://localhost:4000", {
   withCredentials: true,
@@ -89,6 +90,7 @@ function TextEditor() {
   });
   const [feedbackList, setFeedbackList] = useState([]);
   const [showPdfModal, setShowPdfModal] = useState(false);
+  const [hasAccess, setHasAccess] = useState(true);
 
   //Auto Complete Cursor
 
@@ -1148,6 +1150,32 @@ function TextEditor() {
       console.error('Error deleting document:', error);
     }
   };
+
+  // Check document access when component mounts
+  useEffect(() => {
+    const checkAccess = async () => {
+      try {
+        const token = localStorage.getItem('token');
+        await api.get(`/api/documents/${documentId}/access`, {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+        setHasAccess(true);
+      } catch (error) {
+        if (error.response?.status === 403) {
+          setHasAccess(false);
+        }
+      }
+    };
+
+    checkAccess();
+  }, [documentId]);
+
+  // Return AccessDenied component if user doesn't have access
+  if (!hasAccess) {
+    return <AccessDenied />;
+  }
 
   return (
     <div className="flex flex-col min-h-screen bg-white relative pb-16">

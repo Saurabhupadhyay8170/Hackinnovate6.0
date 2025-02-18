@@ -5,7 +5,7 @@ import { nanoid } from 'nanoid';
 import auth from '../middleware/auth.js';
 import User from '../models/User.js';
 import { sendShareEmail } from '../config/nodemailer.js';
-import jwt from 'jsonwebtoken';
+import { getIO } from '../config/socket.js';
 
 const router = express.Router();
 
@@ -171,78 +171,47 @@ router.put('/:documentId', auth, async (req, res) => {
 // Share document
 router.post('/:documentId/share', auth, async (req, res) => {
   try {
+    const { documentId } = req.params;
     const { email, accessLevel } = req.body;
-    const documentId = req.params.documentId;
     
-    // Find the document using documentId field
     const document = await Document.findOne({ documentId });
-    
     if (!document) {
-      console.log('Document not found:', documentId);
       return res.status(404).json({ message: 'Document not found' });
     }
 
-    // Check if user is the author (compare as strings)
-    if (document.author.toString() !== req.user._id.toString()) {
-      return res.status(403).json({ message: 'Only the author can share this document' });
-    }
-
-    // Find the user to share with
     const userToShare = await User.findOne({ email });
     if (!userToShare) {
       return res.status(404).json({ message: 'User not found' });
     }
 
-    // Remove user from all access arrays first
-    document.editorAccess = document.editorAccess.filter(id => 
-      id.toString() !== userToShare._id.toString()
-    );
-    document.reviewerAccess = document.reviewerAccess.filter(id => 
-      id.toString() !== userToShare._id.toString()
-    );
-    document.readerAccess = document.readerAccess.filter(id => 
-      id.toString() !== userToShare._id.toString()
+    // Update document access
+    const updateQuery = { $addToSet: {} };
+    updateQuery.$addToSet[`${accessLevel}Access`] = userToShare._id;
+    
+    await Document.findByIdAndUpdate(document._id, updateQuery);
+
+    // Update UserFiles for shared user
+    await UserFiles.findOneAndUpdate(
+      { userId: userToShare._id },
+      { 
+        $addToSet: { filesShared: document._id },
+        $setOnInsert: { userId: userToShare._id }
+      },
+      { upsert: true }
     );
 
-    // Add user to appropriate access array
-    switch (accessLevel) {
-      case 'editor':
-        document.editorAccess.push(userToShare._id);
-        break;
-      case 'reviewer':
-        document.reviewerAccess.push(userToShare._id);
-        break;
-      case 'reader':
-        document.readerAccess.push(userToShare._id);
-        break;
-      default:
-        return res.status(400).json({ message: 'Invalid access level' });
-    }
-
-    // Save the document
-    await document.save();
-
-    // Send success response before email
-    res.json({ 
-      message: `Document shared with ${email} as ${accessLevel}`,
-      document
+    // Get IO instance and emit update
+    const io = getIO();
+    io.emit('share-update', {
+      documentId,
+      sharedWith: email,
+      accessLevel
     });
 
-    // Send email notification after response
-    await sendShareEmail(
-      email,
-      document.title,
-      req.user.name,
-      accessLevel,
-      documentId
-    );
-
+    res.json({ message: 'Document shared successfully' });
   } catch (error) {
     console.error('Error sharing document:', error);
-    res.status(500).json({ 
-      message: 'Error sharing document',
-      error: error.message 
-    });
+    res.status(500).json({ message: 'Error sharing document' });
   }
 });
 
@@ -470,6 +439,37 @@ router.delete('/:documentId/access/:userId', auth, async (req, res) => {
       message: 'Error removing user access',
       error: error.message 
     });
+  }
+});
+
+// Check document access
+router.get('/:documentId/access', auth, async (req, res) => {
+  try {
+    const { documentId } = req.params;
+    const userId = req.user._id;
+
+    const document = await Document.findOne({ documentId });
+    if (!document) {
+      return res.status(404).json({ message: 'Document not found' });
+    }
+
+    // Check if user has any level of access
+    const hasAccess = 
+      document.author.toString() === userId ||
+      document.editorAccess.includes(userId) ||
+      document.reviewerAccess.includes(userId) ||
+      document.readerAccess.includes(userId);
+
+    if (!hasAccess) {
+      return res.status(403).json({ 
+        message: 'You do not have permission to access this document' 
+      });
+    }
+
+    res.json({ message: 'Access granted' });
+  } catch (error) {
+    console.error('Error checking document access:', error);
+    res.status(500).json({ message: 'Server error' });
   }
 });
 

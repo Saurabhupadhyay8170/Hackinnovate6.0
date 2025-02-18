@@ -162,7 +162,7 @@ function Home() {
               <h3 className="text-3xl font-bold bg-gradient-to-r from-purple-400 to-pink-500 bg-clip-text text-transparent">
                 For Writers
               </h3>
-              <ul className="space-y-4">
+              <ul className="space-y-4 text-lg">
                 <li className="flex items-center gap-3 text-gray-300">
                   <span className="w-2 h-2 bg-gradient-to-r from-purple-400 to-pink-500 rounded-full" />
                   Real-time collaboration
@@ -181,7 +181,7 @@ function Home() {
               <h3 className="text-3xl font-bold bg-gradient-to-r from-purple-400 to-pink-500 bg-clip-text text-transparent">
                 For Readers
               </h3>
-              <ul className="space-y-4">
+              <ul className="space-y-4 text-lg">
                 <li className="flex items-center gap-3 text-gray-300">
                   <span className="w-2 h-2 bg-gradient-to-r from-purple-400 to-pink-500 rounded-full" />
                   Interactive choices
@@ -203,7 +203,7 @@ function Home() {
         {/* <FeatureShowcase content={features} /> */}
 
         {/* Sticky Scrolling */}
-        <StickyScrolling content={features} />
+        {/* <StickyScrolling content={features} /> */}
       </div>
     </div>
   );

@@ -6,6 +6,7 @@ export const ContainerScroll = ({ titleComponent, children }) => {
   const containerRef = useRef(null);
   const { scrollYProgress } = useScroll({
     target: containerRef,
+    offset: ["start start", "end end"]
   });
 
   const [isMobile, setIsMobile] = useState(false);
@@ -22,31 +23,32 @@ export const ContainerScroll = ({ titleComponent, children }) => {
   }, []);
 
   const scaleDimensions = () => {
-    return isMobile ? [0.7, 0.9] : [1.05, 1];
+    return isMobile ? [0.8, 0.9] : [1.05, 1];
   };
 
-  const rotate = useTransform(scrollYProgress, [0, 1], [20, 0]);
+  // Adjusted transform values for shorter height
+  const rotate = useTransform(scrollYProgress, [0, 1], [15, 0]);
   const scale = useTransform(scrollYProgress, [0, 1], scaleDimensions());
-  const translate = useTransform(scrollYProgress, [0, 1], [0, -100]);
+  const translate = useTransform(scrollYProgress, [0, 1], [0, -50]);
 
   return (
     <div
-      className="relative min-h-screen flex items-center justify-center"
+      className="h-[50rem] md:h-[60rem] flex items-center justify-center relative p-2 md:mb-24"
       ref={containerRef}
     >
-      {/* Background Elements */}
+      {/* Background Elements - Adjusted sizes */}
       <div className="absolute inset-0">
         <motion.div
           animate={{
-            scale: [1, 1.5, 1],
+            scale: [1, 1.3, 1],
             opacity: [0.3, 0.6, 0.3],
           }}
           transition={{
-            duration: 10,
+            duration: 8,
             repeat: Infinity,
             ease: "easeInOut"
           }}
-          className="absolute top-0 left-0 w-[50%] aspect-square bg-purple-500/20 rounded-full blur-3xl"
+          className="absolute top-0 left-0 w-[40%] aspect-square bg-purple-500/20 rounded-full blur-3xl"
         />
         <motion.div
           animate={{
@@ -54,22 +56,22 @@ export const ContainerScroll = ({ titleComponent, children }) => {
             opacity: [0.2, 0.5, 0.2],
           }}
           transition={{
-            duration: 12,
+            duration: 10,
             repeat: Infinity,
             ease: "easeInOut",
           }}
-          className="absolute top-0 left-0 w-[50%] aspect-square bg-purple-500/20 rounded-full blur-3xl"
+          className="absolute bottom-0 left-0 w-[40%] aspect-square bg-purple-500/20 rounded-full blur-3xl"
         />
       </div>
 
       <div
-        className="relative z-10 w-full"
+        className="py-8 md:py-20 w-full relative"
         style={{
           perspective: "1000px",
         }}
       >
         <Header translate={translate} titleComponent={titleComponent} />
-        <Card rotate={rotate} scale={scale}>
+        <Card rotate={rotate} translate={translate} scale={scale}>
           {children}
         </Card>
       </div>
@@ -77,12 +79,15 @@ export const ContainerScroll = ({ titleComponent, children }) => {
   );
 };
 
-const Header = ({ translate, titleComponent }) => {
+export const Header = ({ translate, titleComponent }) => {
   return (
     <motion.div
       style={{
         translateY: translate,
       }}
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.6, ease: "easeOut" }}
       className="div max-w-5xl mx-auto text-center"
     >
       {titleComponent}
@@ -90,17 +95,31 @@ const Header = ({ translate, titleComponent }) => {
   );
 };
 
-const Card = ({ rotate, scale, children }) => {
+export const Card = ({ rotate, scale, translate, children }) => {
   return (
     <motion.div
       style={{
         rotateX: rotate,
         scale,
       }}
-      className="max-w-5xl -mt-12 mx-auto h-[30rem] md:h-[40rem] w-full rounded-[30px] p-2 md:p-6 bg-gradient-to-r from-slate-900/30 to-slate-800/30 backdrop-blur-sm border border-slate-700/50 shadow-[0_8px_30px_rgb(0,0,0,0.12)]"
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.9, ease: "easeOut" }}
+      className="max-w-6xl -mt-8 mx-auto h-[25rem] md:h-[45rem] w-full rounded-[30px] p-2 md:p-6 bg-gradient-to-r from-slate-500/30 to-slate-500/40 backdrop-blur-sm border border-slate-500/50 shadow-[0_8px_30px_rgb(0,0,0,0.12)]"
     >
-      <div className="h-full w-full overflow-hidden rounded-2xl bg-gradient-to-b from-slate-600/40 to-slate-700/60 backdrop-blur-sm p-4">
-        {children}
+      <div className="h-full w-full overflow-hidden rounded-2xl bg-gradient-to-b from-slate-900/70 to-slate-800/80 backdrop-blur-sm p-4">
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{
+            duration: 0.9,
+            ease: "easeOut",
+            delay: 0.1
+          }}
+          className="h-full w-full"
+        >
+          {children}
+        </motion.div>
       </div>
     </motion.div>
   );

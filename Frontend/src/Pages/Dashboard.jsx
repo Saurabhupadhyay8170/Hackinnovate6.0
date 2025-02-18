@@ -25,7 +25,7 @@ const Dashboard = () => {
       try {
         const token = localStorage.getItem('token');
         if (!token) {
-          navigate('/login');
+          navigate('/');
           return;
         }
 
@@ -58,7 +58,7 @@ const Dashboard = () => {
         if (error.response?.status === 401) {
           localStorage.removeItem('token');
           localStorage.removeItem('user');
-          navigate('/login');
+          navigate('/');
         }
       } finally {
         setIsLoading(false);
@@ -103,7 +103,7 @@ const Dashboard = () => {
     try {
       const token = localStorage.getItem('token');
       if (!token || !user) {
-        navigate('/login');
+        navigate('/');
         return;
       }
 
@@ -137,7 +137,7 @@ const Dashboard = () => {
       if (error.response?.status === 401) {
         localStorage.removeItem('token');
         localStorage.removeItem('user');
-        navigate('/login');
+        navigate('/');
       }
     }
   };

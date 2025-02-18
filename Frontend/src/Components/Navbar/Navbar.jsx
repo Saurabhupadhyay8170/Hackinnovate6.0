@@ -27,11 +27,30 @@ function Navbar() {
   const location = useLocation();
   const navigate = useNavigate();
 
+  // Update user state when localStorage changes
   useEffect(() => {
-    const userStr = localStorage.getItem('user');
-    if (userStr) {
-      setUser(JSON.parse(userStr));
-    }
+    const checkUser = () => {
+      const userStr = localStorage.getItem('user');
+      if (userStr) {
+        setUser(JSON.parse(userStr));
+      } else {
+        setUser(null);
+      }
+    };
+
+    // Check initially
+    checkUser();
+
+    // Listen for storage changes
+    window.addEventListener('storage', checkUser);
+
+    // Create an interval to check periodically
+    const interval = setInterval(checkUser, 1000);
+
+    return () => {
+      window.removeEventListener('storage', checkUser);
+      clearInterval(interval);
+    };
   }, []);
 
   const handleLogoutClick = () => {
@@ -121,26 +140,28 @@ function Navbar() {
 
               {/* Desktop Navigation */}
               <div className="hidden lg:flex items-center space-x-8">
-                <div className="flex items-center space-x-8 text-lg">
-                  {navItems.map((item, index) => (
-                    <motion.div
-                      key={item.name}
-                      initial={{ opacity: 0, y: -20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: index * 0.1 }}
-                    >
-                      <Link
-                        to={item.path}
-                        className="relative text-gray-300 hover:text-purple-400 group py-2"
+                {user && (
+                  <div className="flex items-center space-x-8 text-lg">
+                    {navItems.map((item, index) => (
+                      <motion.div
+                        key={item.name}
+                        initial={{ opacity: 0, y: -20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: index * 0.1 }}
                       >
-                        <span className="relative z-10">{item.name}</span>
-                        <span className={`absolute bottom-0 left-0 h-0.5 bg-purple-500 transition-all duration-300 
-                          ${location.pathname === item.path ? "w-full" : "w-0 group-hover:w-full"}`} 
-                        />
-                      </Link>
-                    </motion.div>
-                  ))}
-                </div>
+                        <Link
+                          to={item.path}
+                          className="relative text-gray-300 hover:text-purple-400 group py-2"
+                        >
+                          <span className="relative z-10">{item.name}</span>
+                          <span className={`absolute bottom-0 left-0 h-0.5 bg-purple-500 transition-all duration-300 
+                            ${location.pathname === item.path ? "w-full" : "w-0 group-hover:w-full"}`} 
+                          />
+                        </Link>
+                      </motion.div>
+                    ))}
+                  </div>
+                )}
 
                 {/* User Section */}
                 <AnimatePresence>
@@ -199,22 +220,26 @@ function Navbar() {
               style={{ top: '64px' }}
             >
               <div className="flex flex-col items-center pt-8 space-y-6">
-                {navItems.map((item, index) => (
-                  <motion.div
-                    key={item.name}
-                    initial={{ opacity: 0, x: 50 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: index * 0.1 }}
-                  >
-                    <Link
-                      to={item.path}
-                      className="text-sky-800 text-xl hover:text-sky-600 transition-colors duration-200"
-                      onClick={() => setIsOpen(false)}
-                    >
-                      {item.name}
-                    </Link>
-                  </motion.div>
-                ))}
+                {user && (
+                  <>
+                    {navItems.map((item, index) => (
+                      <motion.div
+                        key={item.name}
+                        initial={{ opacity: 0, x: 50 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: index * 0.1 }}
+                      >
+                        <Link
+                          to={item.path}
+                          className="text-sky-800 text-xl hover:text-sky-600 transition-colors duration-200"
+                          onClick={() => setIsOpen(false)}
+                        >
+                          {item.name}
+                        </Link>
+                      </motion.div>
+                    ))}
+                  </>
+                )}
                 {user ? (
                   <motion.button
                     initial={{ opacity: 0, y: 20 }}

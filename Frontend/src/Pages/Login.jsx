@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import * as jwt_decode from 'jwt-decode';
 import axios from 'axios';
 import { motion } from 'framer-motion';
+import { Sparkles, Rocket, Users, Pen, Share2, BookOpen } from 'lucide-react';
 
 function Login() {
   const navigate = useNavigate();
@@ -11,7 +12,6 @@ function Login() {
   const handleGoogleSuccess = async (credentialResponse) => {
     try {
       const decoded = jwt_decode.jwtDecode(credentialResponse.credential);
-
       const userData = {
         email: decoded.email,
         name: decoded.name,
@@ -25,10 +25,9 @@ function Login() {
         userData
       );
 
-      // Store token and user data including _id from backend response
       localStorage.setItem('token', response.data.token);
       localStorage.setItem('user', JSON.stringify({
-        _id: response.data.user._id,  // Store MongoDB ObjectId
+        _id: response.data.user._id,
         name: decoded.name,
         email: decoded.email,
         picture: decoded.picture,
@@ -48,101 +47,127 @@ function Login() {
   };
 
   return (
-    <div className="relative min-h-screen bg-gradient-to-b from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center overflow-hidden">
+    <div className="relative min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-purple-950 flex items-center justify-center overflow-hidden">
       {/* Animated Background Elements */}
       <div className="absolute inset-0">
+        {/* Floating particles */}
+        {[...Array(20)].map((_, i) => (
+          <motion.div
+            key={i}
+            className="absolute w-2 h-2 bg-white rounded-full"
+            initial={{
+              x: Math.random() * window.innerWidth,
+              y: Math.random() * window.innerHeight,
+              opacity: 0.2 + Math.random() * 0.5,
+              scale: 0.2 + Math.random() * 0.8,
+            }}
+            animate={{
+              y: [null, '-100vh'],
+              opacity: [null, 0],
+            }}
+            transition={{
+              duration: 10 + Math.random() * 20,
+              repeat: Infinity,
+              ease: 'linear',
+            }}
+          />
+        ))}
+        
+        {/* Gradient Orbs */}
         <motion.div
           animate={{
-            scale: [1, 1.5, 1],
-            opacity: [0.3, 0.6, 0.3],
+            scale: [1, 1.2, 1],
+            opacity: [0.3, 0.5, 0.3],
           }}
           transition={{
-            duration: 10,
+            duration: 15,
             repeat: Infinity,
             ease: "easeInOut"
           }}
-          className="absolute top-0 left-0 w-[50%] aspect-square bg-purple-500/20 rounded-full blur-3xl"
+          className="absolute top-1/4 -left-32 w-96 h-96 bg-gradient-to-br from-purple-500/30 to-pink-500/30 rounded-full blur-3xl"
         />
         <motion.div
           animate={{
             scale: [1.2, 1, 1.2],
-            opacity: [0.2, 0.5, 0.2],
+            opacity: [0.2, 0.4, 0.2],
           }}
           transition={{
-            duration: 12,
+            duration: 20,
             repeat: Infinity,
             ease: "easeInOut",
           }}
-          className="absolute bottom-0 left-0 w-[50%] aspect-square bg-pink-500/20 rounded-full blur-3xl"
+          className="absolute bottom-1/4 -right-32 w-96 h-96 bg-gradient-to-br from-blue-500/30 to-purple-500/30 rounded-full blur-3xl"
         />
       </div>
 
-      {/* Login Card */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.8 }}
-        className="relative z-10 w-full max-w-md p-8 mx-4"
-      >
-        <div className="relative group">
-          {/* Card Glow Effect */}
-          <div className="absolute -inset-1 rounded-lg bg-gradient-to-r from-purple-500 to-pink-500 opacity-25 group-hover:opacity-40 transition duration-500" />
-          
-          {/* Card Content */}
-          <div className="relative rounded-lg overflow-hidden">
-            {/* Card Background */}
-            <div className="absolute inset-0 bg-gradient-to-br from-slate-900 to-slate-800" />
-            
-            {/* Border Gradient */}
-            <div className="absolute inset-0.5 rounded-lg bg-gradient-to-br from-purple-500/20 to-pink-500/20" />
-            
-            {/* Content Container */}
-            <div className="relative bg-slate-900 p-8 rounded-lg">
-              {/* Logo Design */}
-              <motion.div
-                animate={{
-                  scale: [1, 1.1, 1],
-                }}
-                transition={{
-                  duration: 2,
-                  repeat: Infinity,
-                  ease: "easeInOut"
-                }}
-                className="relative w-24 h-24 mx-auto mb-8"
-              >
-                {/* Animated Ring */}
-                <div className="absolute inset-0 rounded-full bg-gradient-to-r from-purple-500 to-pink-500 opacity-75" />
-                
-                {/* Inner Circle with Icon */}
-                <div className="absolute inset-0.5 rounded-full bg-slate-900 flex items-center justify-center">
-                  <div className="w-12 h-12 rounded-full bg-gradient-to-r from-purple-500 to-pink-500 flex items-center justify-center">
-                    <svg 
-                      className="w-8 h-8 text-white" 
-                      viewBox="0 0 24 24" 
-                      fill="none" 
-                      stroke="currentColor" 
-                      strokeWidth="2" 
-                      strokeLinecap="round" 
-                      strokeLinejoin="round"
-                    >
-                      <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z" />
-                    </svg>
-                  </div>
+      {/* Main Content */}
+      <div className="relative z-10 w-full max-w-screen-xl px-4 flex flex-col md:flex-row items-center justify-center gap-8 md:gap-16">
+        {/* Left Side - Welcome Text */}
+        <motion.div 
+          initial={{ opacity: 0, x: -50 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.8 }}
+          className="w-full md:w-1/2 text-center md:text-left"
+        >
+          <h1 className="text-5xl md:text-7xl font-bold mb-6 bg-gradient-to-r from-white via-purple-200 to-purple-400 bg-clip-text text-transparent">
+            Welcome to StoryMosaic
+          </h1>
+          <p className="text-lg md:text-xl text-purple-200/80 mb-8">
+            Where imagination meets collaboration. Create, share, and bring your stories to life.
+          </p>
+          <div className="hidden md:flex flex-wrap gap-6">
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-full bg-purple-500/20 flex items-center justify-center">
+                <Users className="w-6 h-6 text-purple-400" />
+              </div>
+              <p className="text-purple-200/60">Real-time collaboration</p>
+            </div>
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-full bg-purple-500/20 flex items-center justify-center">
+                <Share2 className="w-6 h-6 text-purple-400" />
+              </div>
+              <p className="text-purple-200/60">Instant sharing</p>
+            </div>
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-full bg-purple-500/20 flex items-center justify-center">
+                <Pen className="w-6 h-6 text-purple-400" />
+              </div>
+              <p className="text-purple-200/60">Creative writing</p>
+            </div>
+          </div>
+        </motion.div>
+
+        {/* Right Side - Login Card */}
+        <motion.div
+          initial={{ opacity: 0, x: 50 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.8 }}
+          className="w-full md:w-1/3"
+        >
+          <motion.div 
+            transition={{ duration: 0.2 }}
+            className="relative overflow-hidden bg-black/40 backdrop-blur-xl border-[1px] border-gradient-to-r from-purple-500 to-pink-500  rounded-xl"
+            style={{
+              borderImage: 'linear-gradient(to right, rgb(168, 85, 247), rgb(236, 72, 153)) 1'
+              // borderRadius: '1rem',
+            }}
+          >
+            <div className="p-8">
+              {/* Logo */}
+              <div className="w-20 h-20 mx-auto mb-8 relative">
+                <div className="absolute inset-0 rounded-full bg-gradient-to-r from-purple-500 to-pink-500 opacity-75 blur-sm" />
+                <div className="relative w-full h-full rounded-full bg-slate-950 flex items-center justify-center">
+                  <Sparkles className="w-10 h-10 text-purple-400" />
                 </div>
-              </motion.div>
+              </div>
 
               {/* Title */}
-              <h1 className="text-4xl font-bold text-center bg-gradient-to-r from-purple-400 via-pink-500 to-red-500 bg-clip-text text-transparent mb-8">
-                Welcome !!
-              </h1>
+              <h2 className="text-2xl font-bold text-center text-white mb-6">
+                Sign in to continue
+              </h2>
 
-              {/* Description */}
-              <p className="text-gray-300 text-center mb-8">
-                Join our community of storytellers and bring your narratives to life
-              </p>
-
-              {/* Google Login Button Wrapper */}
-              <div className="flex justify-center mb-8">
+              {/* Google Login */}
+              <div className="flex justify-center mb-6">
                 <motion.div
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
@@ -159,17 +184,17 @@ function Login() {
                 </motion.div>
               </div>
 
-              {/* Additional Info */}
-              <p className="text-sm text-gray-400 text-center">
-                By signing in, you agree to our{' '}
-                <a href="#" className="text-purple-400 hover:text-purple-300">Terms of Service</a>
+              {/* Terms */}
+              <p className="text-sm text-purple-200/60 text-center">
+                By continuing, you agree to our{' '}
+                <a href="#" className="text-purple-400 hover:text-purple-300 underline">Terms</a>
                 {' '}and{' '}
-                <a href="#" className="text-purple-400 hover:text-purple-300">Privacy Policy</a>
+                <a href="#" className="text-purple-400 hover:text-purple-300 underline">Privacy Policy</a>
               </p>
             </div>
-          </div>
-        </div>
-      </motion.div>
+          </motion.div>
+        </motion.div>
+      </div>
     </div>
   );
 }

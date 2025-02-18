@@ -1,4 +1,4 @@
-import Template from '../models/Template.model.js';
+import Template from '../models/Template.js';
 import { nanoid } from 'nanoid';
 
 export const createTemplate = async (req, res) => {

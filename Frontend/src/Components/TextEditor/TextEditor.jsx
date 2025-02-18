@@ -347,20 +347,6 @@ function TextEditor() {
     });
   }, [documentId, localUser._id]);
 
-  const saveDocument = async (content) => {
-    try {
-      await api.put(`/api/documents/${documentId}`, {
-        title,
-        content,
-      });
-      setSaveStatus({ status: 'saved', message: 'All changes saved' });
-      setSaving(false);
-    } catch (error) {
-      console.error('Error saving document:', error);
-      setSaveStatus({ status: 'error', message: 'Error saving' });
-    }
-  };
-
   const handleTitleChange = async (newTitle) => {
     setTitle(newTitle);
     setSaving(true);

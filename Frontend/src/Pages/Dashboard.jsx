@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { AiOutlinePlus, AiOutlineFile, AiOutlineFolder, AiOutlineLoading3Quarters } from "react-icons/ai";
-import { MdOutlineDocumentScanner } from "react-icons/md";
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { RiShareLine } from "react-icons/ri";
@@ -336,7 +335,7 @@ const Dashboard = () => {
                     className="bg-slate-800/50 backdrop-blur-sm p-6 rounded-xl border border-slate-700/50 hover:border-pink-500/50 transition-all cursor-pointer"
                     onClick={() => navigate(`/document/d/${doc.documentId}`)}
                   >
-                    <div className="flex items-start gap-4">
+                    <div className="flex gap-4 items-center">
                       <div className="p-3 bg-pink-500/10 rounded-lg">
                         <AiOutlineFile className="text-2xl text-pink-500" />
                       </div>
@@ -400,7 +399,7 @@ const Dashboard = () => {
                     className="bg-slate-800/50 backdrop-blur-sm p-6 rounded-xl border border-slate-700/50 hover:border-pink-500/50 transition-all cursor-pointer"
                     onClick={() => navigate(`/document/d/${doc.documentId}`)}
                   >
-                    <div className="flex items-start gap-4">
+                    <div className="flex items-center gap-4">
                       <div className="p-3 bg-pink-500/10 rounded-lg">
                         <AiOutlineFile className="text-2xl text-pink-500" />
                       </div>

@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import templates from '../utils/StoryTemp.json';
 import { useNavigate } from 'react-router-dom';
 import api from '../utils/api';
 import { GoogleGenerativeAI } from '@google/generative-ai';

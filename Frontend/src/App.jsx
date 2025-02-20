@@ -10,6 +10,9 @@ import Template from "./Pages/Template.jsx";
 import NotFound from "./Pages/NotFound.jsx";
 import ProtectedRoute from './middleware/ProtectedRoute';
 import Users from "./Pages/Users.jsx";
+import ReactGA from 'react-ga4';
+
+ReactGA.initialize('G-84VFL90D9F');
 
 function App() {
   return (

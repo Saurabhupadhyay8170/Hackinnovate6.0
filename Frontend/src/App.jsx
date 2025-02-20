@@ -9,6 +9,7 @@ import Room from "./Components/Room.jsx";
 import Template from "./Pages/Template.jsx";
 import NotFound from "./Pages/NotFound.jsx";
 import ProtectedRoute from './middleware/ProtectedRoute';
+import Users from "./Pages/Users.jsx";
 
 function App() {
   return (
@@ -33,6 +34,11 @@ function App() {
           <Route path="/document/d/:documentId" element={
             <ProtectedRoute>
               <TextEditor />
+            </ProtectedRoute>
+          } />
+          <Route path="/users" element={
+            <ProtectedRoute>
+              <Users />
             </ProtectedRoute>
           } />
           <Route path="*" element={<NotFound />} />

@@ -58,11 +58,10 @@ function Navbar() {
   };
 
   const handleLogoutConfirm = () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
+    localStorage.clear();
     setUser(null);
     setShowLogoutConfirm(false);
-    navigate('/');
+    navigate('/', { replace: true });
   };
 
   const handleLogoutCancel = () => {

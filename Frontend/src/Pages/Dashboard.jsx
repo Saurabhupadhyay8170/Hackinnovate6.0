@@ -25,7 +25,8 @@ const Dashboard = () => {
       try {
         const token = localStorage.getItem('token');
         if (!token) {
-          navigate('/');
+          localStorage.clear(); // Clear any remaining data
+          navigate('/', { replace: true });
           return;
         }
 

@@ -7,9 +7,9 @@ const ProtectedRoute = ({ children }) => {
   const user = localStorage.getItem('user');
 
   if (!token || !user) {
-    // Clear any existing data and redirect to login
+    // Clear any existing data and redirect to home
     localStorage.clear();
-    return <Navigate to="/" state={{ from: location.pathname }} replace />;
+    return <Navigate to="/" replace />;
   }
 
   try {

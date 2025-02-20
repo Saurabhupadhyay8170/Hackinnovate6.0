@@ -7,9 +7,9 @@ const ProtectedRoute = ({ children }) => {
   const user = localStorage.getItem('user');
 
   if (!token || !user) {
-    // Clear any existing data and redirect to home
     localStorage.clear();
-    return <Navigate to="/" replace />;
+    window.location.href = '/';
+    return null;
   }
 
   try {

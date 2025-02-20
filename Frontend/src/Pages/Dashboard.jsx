@@ -26,7 +26,7 @@ const Dashboard = () => {
         const token = localStorage.getItem('token');
         if (!token) {
           localStorage.clear(); // Clear any remaining data
-          navigate('/', { replace: true });
+          window.location.href = '/';
           return;
         }
 
@@ -57,9 +57,8 @@ const Dashboard = () => {
       } catch (error) {
         console.error('Error fetching documents:', error);
         if (error.response?.status === 401) {
-          localStorage.removeItem('token');
-          localStorage.removeItem('user');
-          navigate('/');
+          localStorage.clear();
+          window.location.href = '/';
         }
       } finally {
         setIsLoading(false);
@@ -136,9 +135,8 @@ const Dashboard = () => {
     } catch (error) {
       console.error('Error creating document:', error);
       if (error.response?.status === 401) {
-        localStorage.removeItem('token');
-        localStorage.removeItem('user');
-        navigate('/');
+        localStorage.clear();
+        window.location.href = '/';
       }
     }
   };

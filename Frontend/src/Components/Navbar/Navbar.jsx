@@ -61,7 +61,7 @@ function Navbar() {
     localStorage.clear();
     setUser(null);
     setShowLogoutConfirm(false);
-    navigate('/', { replace: true });
+    window.location.href = '/';
   };
 
   const handleLogoutCancel = () => {

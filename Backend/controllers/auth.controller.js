@@ -7,7 +7,6 @@ export const googleLogin = async (req, res) => {
   
       // Validate required fields
       if (!email || !name || !googleId) {
-        console.log('Received data:', req.body); // Debug log
         return res.status(400).json({ 
           message: 'Missing required fields',
           received: { email, name, googleId }

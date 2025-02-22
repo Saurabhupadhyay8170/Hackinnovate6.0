@@ -440,7 +440,7 @@ function TextEditor() {
             setUserRole('reader');
           }
 
-          console.log(userRole);
+          // console.log(userRole);
         }
       } catch (error) {
         console.error('Error fetching document:', error);
@@ -822,11 +822,11 @@ function TextEditor() {
         });
 
         // Log the content being saved
-        console.log('Saving content:', {
-          documentId,
-          contentLength: editorContent.length,
-          title: prompt
-        });
+        // console.log('Saving content:', {
+        //   documentId,
+        //   contentLength: editorContent.length,
+        //   title: prompt
+        // });
 
         // Update local states
         setDocumentContent(editorContent);

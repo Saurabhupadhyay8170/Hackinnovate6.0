@@ -113,7 +113,7 @@ export const getDocumentById = async (req, res) => {
       const document = await Document.findOne({ 
         documentId: req.params.documentId 
       }).populate('author', 'name email');
-      console.log(document);
+      // console.log(document);
   
       if (!document) {
         return res.status(404).json({ message: 'Document not found', error: error.message });
@@ -240,7 +240,7 @@ export const deleteDocument = async (req, res) => {
       }
   
       // Check if user is authorized to delete (only author can delete)
-      console.log(document);
+      // console.log(document);
       if (document?.author.toString() !== req.user._id.toString()) {
         return res.status(403).json({ 
           message: 'Unauthorized: Only the document author can delete this document' 

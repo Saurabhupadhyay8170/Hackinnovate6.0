@@ -215,6 +215,13 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
           <sub><b>Subrat Jain</b></sub>
         </a>
       </td>
+      <td align="center">
+        <a href="https://github.com/NiravShah1729">
+          <img src="https://avatars.githubusercontent.com/u/199188656?v=4" width="100px;" alt="Subrat Jain"/>
+          <br />
+          <sub><b>Nirav Shah</b></sub>
+        </a>
+      </td>
     </tr>
   </table>
 </div>
@@ -222,5 +229,5 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ---
 
 <div align="center">
-  Made with ❤️ by the CodePirates at Hackathon at IIT Gandhinagar
+  Made with ❤️ by the CodePirates at Hackathon at IIT Gandhinagar 2025
 </div>

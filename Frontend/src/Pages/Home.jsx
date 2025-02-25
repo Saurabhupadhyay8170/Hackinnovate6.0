@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { motion, useScroll } from 'framer-motion';
+import { useNavigate } from 'react-router-dom';
 import ContainerScroll from '../Components/Home/ContainerScrollScreen/ContainerScroll';
 import StickyScrolling from '../Components/Home/ParallexScrollFeatures/StickyScrolling';
 import FeatureShowcase from '../Components/Home/FeatureShowcase/FeatureShowcase';
 
 function Home() {
+  const navigate = useNavigate();
   const [showNav, setShowNav] = useState(true);
   const { scrollY } = useScroll();
 
@@ -93,7 +95,7 @@ function Home() {
         <motion.div 
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          className="min-h-screen pt-20 flex items-center"
+          className="md:min-h-screen pt-40 md:pt-20 flex items-center"
         >
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-0">
             <div className="flex flex-col items-center justify-center">
@@ -124,6 +126,7 @@ function Home() {
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
                   className="bg-gradient-to-r from-purple-500 to-pink-500 text-white px-8 py-4 rounded-full font-medium"
+                  onClick={() => navigate('/login')}
                 >
                   Start Writing
                 </motion.button>
@@ -148,12 +151,9 @@ function Home() {
               transition={{ duration: 1 }}
               className="space-y-4"
             >
-              <h2 className="text-4xl md:text-7xl pb-12 font-bold text-center bg-gradient-to-r from-purple-400 via-pink-500 to-red-500 bg-clip-text text-transparent">
+              <h2 className="text-4xl md:text-7xl pb-12 pt-[3em] font-bold text-center bg-gradient-to-r from-purple-400 via-pink-500 to-red-500 bg-clip-text text-transparent">
                 Collaborative Writing Reimagined
               </h2>
-              <p className="text-gray-400 text-xl max-w-3xl mx-auto text-center pt-20">
-                {/* Experience the future of storytelling with our innovative tools and features */}
-              </p>
             </motion.div>
           }
         >

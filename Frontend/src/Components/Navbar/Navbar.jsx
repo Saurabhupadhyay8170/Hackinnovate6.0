@@ -211,11 +211,11 @@ function Navbar() {
         <AnimatePresence>
           {isOpen && (
             <motion.div 
-              initial={{ opacity: 0, x: '100%' }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: '100%' }}
+              initial={{ opacity: 0, x: '150%' }}
+              animate={{ opacity: 1, x: '100%' }}
+              exit={{ opacity: 0, x: '150%' }}
               transition={{ type: 'tween' }}
-              className="lg:hidden fixed inset-0 bg-sky-50/95 backdrop-blur-sm"
+              className="lg:hidden fixed inset-0 bg-black/40 backdrop-blur-sm w-[50%]"
               style={{ top: '64px' }}
             >
               <div className="flex flex-col items-center pt-8 space-y-6">
@@ -280,7 +280,7 @@ function Navbar() {
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.9 }}
-              className="fixed top-[40%] left-[35%] -translate-x-1/2 -translate-y-1/2 bg-white rounded-xl shadow-2xl p-6 z-[1002] w-[90%] max-w-md"
+              className="fixed top-[40%] left-0 md:left-[35%] -translate-x-1/2 -translate-y-1/2 bg-white rounded-xl shadow-2xl p-6 z-[1002] w-[90%] max-w-md"
             >
               <div className="flex items-center gap-3 text-sky-900 mb-4">
                 <AlertCircle className="h-6 w-6 text-sky-600" />

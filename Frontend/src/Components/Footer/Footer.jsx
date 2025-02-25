@@ -43,14 +43,14 @@ function Footer() {
   const contactItems = [
     { 
       icon: MapPin, 
-      text: "Writers' Hub, Creative District",
-      link: "https://maps.google.com"
+      text: "Ahmedabad University",
+      link: "https://www.google.com/maps?client=ubuntu-sn&channel=fs&um=1&ie=UTF-8&fb=1&gl=in&sa=X&geocode=KQ8Ehl-NhF45MUIWhSS2yAx6&daddr=Naranpark+Society,+Navrangpura,+Ahmedabad,+Gujarat+380009"
     },
-    { 
-      icon: Mail, 
-      text: "create@StoryMosaic.com",
-      link: "mailto:create@StoryMosaic.com"
-    }
+    // { 
+    //   icon: Mail, 
+    //   text: "vishvboda0407@gmail.com",
+    //   link: "mailto:create@StoryMosaic.com"
+    // }
   ];
 
   return (
@@ -99,13 +99,12 @@ function Footer() {
                   whileHover={{ x: 5 }}
                   className="group"
                 >
-                  <Link
-                    to={`/${item.name.toLowerCase().replace(' ', '-')}`}
+                  <p
                     className="text-gray-400 hover:text-purple-400 transition-colors duration-200 flex items-center gap-2"
                   >
                     <item.icon className="w-4 h-4 group-hover:text-pink-400" />
                     <span>{item.name}</span>
-                  </Link>
+                  </p>
                 </motion.li>
               ))}
             </ul>
@@ -123,13 +122,12 @@ function Footer() {
                   whileHover={{ x: 5 }}
                   className="group"
                 >
-                  <Link
-                    to={`/${item.name.toLowerCase().replace(' ', '-')}`}
+                  <p
                     className="text-gray-400 hover:text-purple-400 transition-colors duration-200 flex items-center gap-2"
                   >
                     <item.icon className="w-4 h-4 group-hover:text-pink-400" />
                     <span>{item.name}</span>
-                  </Link>
+                  </p>
                 </motion.li>
               ))}
             </ul>

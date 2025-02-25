@@ -105,7 +105,7 @@ export const Card = ({ rotate, scale, translate, children }) => {
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.9, ease: "easeOut" }}
-      className="max-w-6xl -mt-8 mx-auto h-[25rem] md:h-[45rem] w-full rounded-[30px] p-2 md:p-6 bg-gradient-to-r from-slate-500/20 to-slate-500/30 backdrop-blur-sm border border-slate-500/50 shadow-[0_8px_30px_rgb(0,0,0,0.12)]"
+      className="max-w-6xl -mt-8 mx-auto h-[30rem] md:h-[45rem] w-full rounded-[30px] p-2 md:p-6 bg-gradient-to-r from-slate-500/20 to-slate-500/30 backdrop-blur-sm border border-slate-500/50 shadow-[0_8px_30px_rgb(0,0,0,0.12)]"
     >
       <div className="h-full w-full overflow-hidden rounded-2xl bg-gradient-to-b from-slate-900/70 to-slate-900/70 backdrop-blur-sm p-4">
         <motion.div

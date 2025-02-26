@@ -822,11 +822,11 @@ function TextEditor() {
         });
 
         // Log the content being saved
-        // console.log('Saving content:', {
-        //   documentId,
-        //   contentLength: editorContent.length,
-        //   title: prompt
-        // });
+        console.log('Saving content:', {
+          documentId,
+          contentLength: editorContent.length,
+          title: prompt
+        });
 
         // Update local states
         setDocumentContent(editorContent);

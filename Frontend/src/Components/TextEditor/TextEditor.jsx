@@ -30,7 +30,7 @@ const socket = io(import.meta.env.VITE_API_URL || "http://localhost:4000", {
   reconnectionDelay: 1000
 });
 const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
-console.log(GEMINI_API_KEY)
+// console.log(GEMINI_API_KEY)
 
 const AISuggestion = ({ suggestion, position, onAccept, onDismiss }) => {
   if (!suggestion) return null;
@@ -110,7 +110,7 @@ function TextEditor() {
   
     try {
       const response = await axios.post(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${GEMINI_API_KEY}`,
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`,
         {
           contents: [{
             parts: [{
@@ -605,7 +605,7 @@ function TextEditor() {
 
     try {
       const response = await axios.post(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${GEMINI_API_KEY}`,
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`,
         {
           contents: [{
             parts: [{
@@ -685,7 +685,7 @@ function TextEditor() {
 
     try {
       const response = await axios.post(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${GEMINI_API_KEY}`,
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`,
         {
           contents: [{
             parts: [{
@@ -750,7 +750,7 @@ function TextEditor() {
       }
 
       const response = await axios.post(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${GEMINI_API_KEY}`,
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`,
         {
           contents: [{
             parts: [{

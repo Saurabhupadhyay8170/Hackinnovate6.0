@@ -30,6 +30,7 @@ const socket = io(import.meta.env.VITE_API_URL || "http://localhost:4000", {
   reconnectionDelay: 1000
 });
 const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
+console.log(GEMINI_API_KEY)
 
 const AISuggestion = ({ suggestion, position, onAccept, onDismiss }) => {
   if (!suggestion) return null;

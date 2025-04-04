@@ -2,22 +2,22 @@
 import React, { useRef, useState } from "react";
 import { useMotionValueEvent, useScroll, motion } from "framer-motion";
 
-const StickyScroll = ({ content }) => {
+const StickyScroll = ({ features }) => {
   const [activeCard, setActiveCard] = useState(0);
   const containerRef = useRef(null);
-  
+
   const { scrollYProgress } = useScroll({
     target: containerRef,
     offset: ["start start", "end end"]
   });
 
   useMotionValueEvent(scrollYProgress, "change", (latest) => {
-    const currentSection = Math.floor(latest * content.length);
-    setActiveCard(Math.min(currentSection, content.length - 1));
+    const currentSection = Math.floor(latest * features.length);
+    setActiveCard(Math.min(currentSection, features.length - 1));
   });
 
   return (
-    <motion.div 
+    <motion.div
       ref={containerRef}
       className="relative w-full bg-slate-950"
     >
@@ -30,7 +30,7 @@ const StickyScroll = ({ content }) => {
             <div className="grid grid-cols-1 lg:grid-cols-[1fr,1.5fr] gap-20">
               {/* Text Content */}
               <div className="relative">
-                {content.map((item, index) => (
+                {features.map((item, index) => (
                   <motion.div
                     key={index}
                     initial={{ opacity: 0, y: 20 }}
@@ -59,7 +59,7 @@ const StickyScroll = ({ content }) => {
 
               {/* Visual Content */}
               <div className="h-[450px] w-full rounded-lg overflow-hidden bg-slate-900/40">
-                {content.map((item, index) => (
+                {features.map((item, index) => (
                   <motion.div
                     key={index}
                     initial={{ opacity: 0, x: 100 }}
@@ -115,7 +115,7 @@ const StickyScroll = ({ content }) => {
       </div>
 
       {/* Progress Bar */}
-      <motion.div 
+      <motion.div
         className="fixed left-0 top-0 h-1 bg-gradient-to-r from-emerald-500 to-cyan-500"
         style={{
           width: scrollYProgress.get() * 100 + "%",

@@ -1,7 +1,7 @@
 import React from "react";
 import { motion } from "framer-motion";
 
-const FeatureShowcase = ({ content }) => {
+const FeatureShowcase = ({ features }) => {
   return (
     <div className="relative min-h-screen overflow-hidden bg-transparent">
       {/* Animated Background Elements */}
@@ -34,7 +34,7 @@ const FeatureShowcase = ({ content }) => {
 
       {/* Content */}
       <div className="relative z-10 max-w-7xl mx-auto px-4 py-20">
-        <motion.h2 
+        <motion.h2
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8 }}
@@ -44,7 +44,7 @@ const FeatureShowcase = ({ content }) => {
         </motion.h2>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-16">
-          {content.map((feature, index) => (
+          {features.map((feature, index) => (
             <motion.div
               key={index}
               initial={{ opacity: 0, y: 50 }}
@@ -59,11 +59,11 @@ const FeatureShowcase = ({ content }) => {
                   whileHover={{ scale: 1.1, rotate: 5 }}
                   className="w-16 h-16 mb-6 rounded-full bg-gradient-to-r from-purple-500 to-pink-500 flex items-center justify-center text-4xl"
                 >
-                  {index === 0 ? "✍️" : 
-                   index === 1 ? "🎭" :
-                   index === 2 ? "🤖" :
-                   index === 3 ? "⚡" :
-                   index === 4 ? "👥" : "🚀"}
+                  {index === 0 ? "✍️" :
+                    index === 1 ? "🎭" :
+                      index === 2 ? "🤖" :
+                        index === 3 ? "⚡" :
+                          index === 4 ? "👥" : "🚀"}
                 </motion.div>
 
                 {/* Feature Content */}
@@ -75,7 +75,7 @@ const FeatureShowcase = ({ content }) => {
                 </p>
 
                 {/* Interactive Elements */}
-                <motion.div 
+                <motion.div
                   initial={{ opacity: 0 }}
                   whileInView={{ opacity: 1 }}
                   transition={{ delay: 0.5 }}

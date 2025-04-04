@@ -1,22 +1,24 @@
 import React, { useState, useEffect } from "react";
-import { 
-  Menu, 
-  X, 
-  LogOut, 
-  FileText, 
-  AlertCircle, 
-  BookOpen, 
-  Users, 
-  Pen, 
+import {
+  Menu,
+  X,
+  LogOut,
+  FileText,
+  AlertCircle,
+  BookOpen,
+  Users,
+  Pen,
   Compass,
   Feather,
   MessageSquare,
   Star,
   HelpCircle,
-  Sparkles
+  Sparkles,
+  Edit3
 } from "lucide-react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
+import CollaborativeEditor from "../CollaborativeEditor/CollaborativeEditor";
 
 function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
@@ -24,6 +26,7 @@ function Navbar() {
   const [prevScrollPos, setPrevScrollPos] = useState(0);
   const [visible, setVisible] = useState(true);
   const [user, setUser] = useState(null);
+  const [showCollaborativeEditor, setShowCollaborativeEditor] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -72,13 +75,13 @@ function Navbar() {
   useEffect(() => {
     const handleScroll = () => {
       const currentScrollPos = window.scrollY;
-      
+
       // Determine scroll direction and visibility
       setVisible(
         (prevScrollPos > currentScrollPos) || // Scrolling up
         currentScrollPos < 10 // At top of page
       );
-      
+
       setPrevScrollPos(currentScrollPos);
     };
 
@@ -92,7 +95,7 @@ function Navbar() {
   }, [location]);
 
   // Prevent scroll when mobile menu is open
-  useEffect(() => { 
+  useEffect(() => {
     if (isOpen) {
       document.body.style.overflow = 'hidden';
     } else {
@@ -103,11 +106,16 @@ function Navbar() {
   const navItems = [
     { name: "Home", path: "/dashboard", icon: Sparkles },
     { name: "Templates", path: "/template", icon: Sparkles }
-  ] 
+  ]
+
+  // Toggle the collaborative editor
+  const toggleCollaborativeEditor = () => {
+    setShowCollaborativeEditor(!showCollaborativeEditor);
+  };
 
   return (
     <>
-      <motion.nav 
+      <motion.nav
         initial={{ y: -100 }}
         animate={{ y: 0 }}
         className={`fixed top-0 left-0 right-0 z-[1000] transition-all duration-300 ease-in-out`}
@@ -116,8 +124,8 @@ function Navbar() {
           <div className="w-[90%] mx-auto sm:px-6 lg:px-8">
             <div className="flex items-center justify-between h-16">
               {/* Logo */}
-              <Link 
-                to="/" 
+              <Link
+                to="/"
                 className="font-bold text-2xl md:text-3xl text-white group"
               >
                 <motion.span
@@ -132,7 +140,7 @@ function Navbar() {
                     <Feather className="h-8 w-8 text-purple-400 group-hover:text-purple-300" />
                   </motion.div>
                   <span className="bg-gradient-to-r from-purple-400 to-pink-400 text-transparent bg-clip-text group-hover:from-purple-300 group-hover:to-pink-300">
-                    StoryMosaic
+                    Talespire
                   </span>
                 </motion.span>
               </Link>
@@ -154,11 +162,29 @@ function Navbar() {
                         >
                           <span className="relative z-10">{item.name}</span>
                           <span className={`absolute bottom-0 left-0 h-0.5 bg-purple-500 transition-all duration-300 
-                            ${location.pathname === item.path ? "w-full" : "w-0 group-hover:w-full"}`} 
+                            ${location.pathname === item.path ? "w-full" : "w-0 group-hover:w-full"}`}
                           />
                         </Link>
                       </motion.div>
                     ))}
+
+                    {/* Collaborative Writing Button */}
+                    <motion.div
+                      initial={{ opacity: 0, y: -20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: navItems.length * 0.1 }}
+                    >
+                      <button
+                        onClick={toggleCollaborativeEditor}
+                        className="relative text-gray-300 hover:text-purple-400 group py-2 flex items-center gap-2"
+                      >
+                        <Edit3 className="h-5 w-5" />
+                        <span className="relative z-10">Collaborative Writing</span>
+                        <span className={`absolute bottom-0 left-0 h-0.5 bg-purple-500 transition-all duration-300 
+                          ${showCollaborativeEditor ? "w-full" : "w-0 group-hover:w-full"}`}
+                        />
+                      </button>
+                    </motion.div>
                   </div>
                 )}
 
@@ -194,7 +220,7 @@ function Navbar() {
               <motion.button
                 whileTap={{ scale: 0.9 }}
                 onClick={() => setIsOpen(!isOpen)}
-                className="lg:hidden p-2 text-sky-600 hover:text-sky-800 focus:outline-none"
+                className="lg:hidden p-2 text-purple-400 hover:text-purple-300 focus:outline-none"
                 aria-label="Toggle menu"
               >
                 {isOpen ? (
@@ -206,114 +232,131 @@ function Navbar() {
             </div>
           </div>
         </div>
+      </motion.nav>
 
-        {/* Mobile Menu Overlay */}
-        <AnimatePresence>
-          {isOpen && (
-            <motion.div 
-              initial={{ opacity: 0, x: '150%' }}
-              animate={{ opacity: 1, x: '100%' }}
-              exit={{ opacity: 0, x: '150%' }}
-              transition={{ type: 'tween' }}
-              className="lg:hidden fixed inset-0 bg-black/40 backdrop-blur-sm w-[50%]"
-              style={{ top: '64px' }}
-            >
-              <div className="flex flex-col items-center pt-8 space-y-6">
-                {user && (
-                  <>
-                    {navItems.map((item, index) => (
+      {/* Mobile menu, show/hide based on menu state */}
+      <AnimatePresence>
+        {isOpen && (
+          <motion.div
+            initial={{ opacity: 0, y: -50 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -50 }}
+            className="lg:hidden fixed inset-0 z-50 pt-16 bg-gradient-to-b from-slate-900 to-black text-white overflow-y-auto"
+          >
+            <div className="px-6 py-8 space-y-8">
+              {user ? (
+                <div className="space-y-6 text-center">
+                  <div className="space-y-2">
+                    {navItems.map((item) => (
                       <motion.div
                         key={item.name}
-                        initial={{ opacity: 0, x: 50 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        transition={{ delay: index * 0.1 }}
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
+                        className="block py-3"
                       >
                         <Link
                           to={item.path}
-                          className="text-sky-800 text-xl hover:text-sky-600 transition-colors duration-200"
-                          onClick={() => setIsOpen(false)}
+                          className="flex items-center justify-center gap-3 text-xl font-medium"
                         >
+                          <item.icon className="h-6 w-6 text-purple-400" />
                           {item.name}
                         </Link>
                       </motion.div>
                     ))}
-                  </>
-                )}
-                {user ? (
+
+                    {/* Collaborative Writing Button */}
+                    <motion.div
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
+                      className="block py-3"
+                    >
+                      <button
+                        onClick={() => {
+                          setIsOpen(false);
+                          toggleCollaborativeEditor();
+                        }}
+                        className="flex items-center justify-center gap-3 text-xl font-medium w-full"
+                      >
+                        <Edit3 className="h-6 w-6 text-purple-400" />
+                        Collaborative Writing
+                      </button>
+                    </motion.div>
+                  </div>
+
                   <motion.button
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
                     onClick={handleLogoutClick}
-                    className="flex items-center space-x-2 px-4 py-2 rounded-lg bg-sky-600 text-white hover:bg-sky-700"
+                    className="flex items-center justify-center gap-2 w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white px-6 py-3 rounded-lg shadow-lg shadow-purple-500/20"
                   >
                     <LogOut className="h-5 w-5" />
-                    <span>Logout</span>
+                    <span>Sign Out</span>
                   </motion.button>
-                ) : (
+                </div>
+              ) : (
+                <div className="text-center">
                   <Link
                     to="/login"
-                    className="px-6 py-2 rounded-lg bg-sky-600 text-white hover:bg-sky-700"
-                    onClick={() => setIsOpen(false)}
+                    className="inline-block relative group"
                   >
-                    Sign In
+                    <div className="absolute -inset-0.5 bg-gradient-to-r from-purple-600 to-pink-600 rounded-lg blur opacity-50 group-hover:opacity-75 transition duration-200"></div>
+                    <button className="relative bg-black px-6 py-3 rounded-lg text-white">
+                      Start Creating
+                    </button>
                   </Link>
-                )}
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </motion.nav>
-
-      {/* Logout Confirmation Modal */}
-      <AnimatePresence>
-        {showLogoutConfirm && (
-          <>
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={handleLogoutCancel}
-              className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[1001]"
-            />
-            
-            <motion.div
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.9 }}
-              className="fixed top-[40%] left-0 md:left-[35%] -translate-x-1/2 -translate-y-1/2 bg-white rounded-xl shadow-2xl p-6 z-[1002] w-[90%] max-w-md"
-            >
-              <div className="flex items-center gap-3 text-sky-900 mb-4">
-                <AlertCircle className="h-6 w-6 text-sky-600" />
-                <h3 className="text-xl font-semibold">Confirm Logout</h3>
-              </div>
-              
-              <p className="text-gray-600 mb-6">
-                Are you sure you want to log out? You'll need to sign in again to access your account.
-              </p>
-              
-              <div className="flex items-center justify-end gap-4">
-                <motion.button
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                  onClick={handleLogoutCancel}
-                  className="px-4 py-2 rounded-lg text-sky-600 hover:bg-sky-50 transition-colors"
-                >
-                  Cancel
-                </motion.button>
-                
-                <motion.button
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                  onClick={handleLogoutConfirm}
-                  className="px-4 py-2 rounded-lg bg-sky-600 text-white hover:bg-sky-700 transition-colors"
-                >
-                  Logout
-                </motion.button>
-              </div>
-            </motion.div>
-          </>
+                </div>
+              )}
+            </div>
+          </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Logout confirmation dialog */}
+      <AnimatePresence>
+        {showLogoutConfirm && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[2000] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4"
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="bg-white rounded-lg shadow-xl max-w-md w-full p-6 text-center"
+            >
+              <AlertCircle className="h-16 w-16 text-red-500 mx-auto mb-4" />
+              <h3 className="text-xl font-semibold text-gray-900 mb-2">
+                Sign Out Confirmation
+              </h3>
+              <p className="text-gray-600 mb-6">
+                Are you sure you want to sign out? Any unsaved work may be lost.
+              </p>
+              <div className="flex justify-center gap-4">
+                <button
+                  onClick={handleLogoutCancel}
+                  className="px-4 py-2 bg-gray-200 hover:bg-gray-300 rounded-lg font-medium transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleLogoutConfirm}
+                  className="px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg font-medium transition-colors"
+                >
+                  Sign Out
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Collaborative Editor Component */}
+      <CollaborativeEditor
+        isOpen={showCollaborativeEditor}
+        onClose={toggleCollaborativeEditor}
+      />
     </>
   );
 }

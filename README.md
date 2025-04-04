@@ -1,7 +1,7 @@
-# StoryMosaic - Collaborative Storytelling Platform
+# Talespire - Collaborative Storytelling Platform
 
 <div align="center">
-<!--   <img src="./favicon.ico" alt="StoryMosaic Logo" width="200"/> -->
+<!--   <img src="./favicon.ico" alt="Talespire Logo" width="200"/> -->
   
   [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
   [![React](https://img.shields.io/badge/React-19.0.0-61dafb.svg)](https://reactjs.org/)
@@ -13,7 +13,7 @@
 
 ## 🎯 Overview
 
-StoryMosaic is a cutting-edge collaborative storytelling platform that combines real-time collaboration with AI-powered writing assistance. Create, collaborate, and bring your stories to life with an intuitive interface and powerful features.
+Talespire is a cutting-edge collaborative storytelling platform that combines real-time collaboration with AI-powered writing assistance. Create, collaborate, and bring your stories to life with an intuitive interface and powerful features.
 
 ## 🌟 Features
 
@@ -203,7 +203,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
       </td>
       <td align="center">
         <a href="https://github.com/DataWizard1631">
-          <img src=https://avatars.githubusercontent.com/u/143613914?v=4" width="100px;" alt="Deep Patel"/>
+          <img src="https://avatars.githubusercontent.com/u/143613914?v=4" width="100px;" alt="Deep Patel"/>
           <br />
           <sub><b>Deep Patel</b></sub>
         </a>
@@ -217,7 +217,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
       </td>
       <td align="center">
         <a href="https://github.com/NiravShah1729">
-          <img src="https://avatars.githubusercontent.com/u/199188656?v=4" width="100px;" alt="Subrat Jain"/>
+          <img src="https://avatars.githubusercontent.com/u/199188656?v=4" width="100px;" alt="Nirav Shah"/>
           <br />
           <sub><b>Nirav Shah</b></sub>
         </a>
@@ -229,5 +229,5 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ---
 
 <div align="center">
-  Made with ❤️ by the CodePirates at Hackathon at IIT Gandhinagar 2025
+  Made with ❤️ by the Talespire Team
 </div>

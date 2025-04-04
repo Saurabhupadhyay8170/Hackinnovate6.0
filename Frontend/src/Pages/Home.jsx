@@ -4,11 +4,13 @@ import { useNavigate } from 'react-router-dom';
 import ContainerScroll from '../Components/Home/ContainerScrollScreen/ContainerScroll';
 import StickyScrolling from '../Components/Home/ParallexScrollFeatures/StickyScrolling';
 import FeatureShowcase from '../Components/Home/FeatureShowcase/FeatureShowcase';
+import CollaborativeEditor from '../components/CollaborativeEditor/CollaborativeEditor';
 
 function Home() {
   const navigate = useNavigate();
   const [showNav, setShowNav] = useState(true);
   const { scrollY } = useScroll();
+  const [showCollaborativeEditor, setShowCollaborativeEditor] = useState(false);
 
   useEffect(() => {
     return scrollY.onChange((latest) => {
@@ -44,6 +46,10 @@ function Home() {
       description: "When your story is ready, publish it your way. Export in multiple formats, perfect for self-publishing or sharing with your audience. Your stories, your rules, your success.",
     },
   ];
+
+  const toggleCollaborativeEditor = () => {
+    setShowCollaborativeEditor(!showCollaborativeEditor);
+  };
 
   return (
     <div className="relative bg-gradient-to-b from-slate-900 via-slate-800 to-slate-900">
@@ -92,7 +98,7 @@ function Home() {
 
       <div className="relative z-10">
         {/* Hero Content */}
-        <motion.div 
+        <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           className="md:min-h-screen pt-40 md:pt-20 flex items-center"
@@ -106,23 +112,23 @@ function Home() {
               >
                 Where Stories Come<br />Alive Together
               </motion.h1>
-              <motion.p 
+              <motion.p
                 initial={{ y: 50, opacity: 0 }}
                 animate={{ y: 0, opacity: 1 }}
                 transition={{ delay: 0.2 }}
                 className="text-lg md:text-xl text-center text-gray-300 max-w-3xl mb-12"
               >
-                Transform your writing experience with our collaborative storytelling platform. 
-                Create, collaborate, and captivate audiences with interactive narratives powered 
+                Transform your writing experience with our collaborative storytelling platform.
+                Create, collaborate, and captivate audiences with interactive narratives powered
                 by real-time collaboration and AI assistance.
               </motion.p>
-              <motion.div 
+              <motion.div
                 initial={{ y: 50, opacity: 0 }}
                 animate={{ y: 0, opacity: 1 }}
                 transition={{ delay: 0.4 }}
                 className="flex flex-wrap gap-6 justify-center"
               >
-                <motion.button 
+                <motion.button
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
                   className="bg-gradient-to-r from-purple-500 to-pink-500 text-white px-8 py-4 rounded-full font-medium"
@@ -130,10 +136,18 @@ function Home() {
                 >
                   Start Writing
                 </motion.button>
-                <motion.button 
+                <motion.button
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
                   className="border-2 border-purple-500 text-purple-400 px-8 py-4 rounded-full font-medium hover:bg-purple-500/10"
+                  onClick={toggleCollaborativeEditor}
+                >
+                  Try Collaborative Editor
+                </motion.button>
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  className="border-2 border-gray-400 text-gray-300 px-8 py-4 rounded-full font-medium hover:bg-gray-400/10"
                 >
                   Watch Demo
                 </motion.button>
@@ -199,12 +213,55 @@ function Home() {
           </div>
         </ContainerScroll>
 
-        {/* Feature Showcase */}
-        {/* <FeatureShowcase content={features} /> */}
+        {/* Feature Showcase Section */}
+        <FeatureShowcase features={features} />
 
-        {/* Sticky Scrolling */}
-        {/* <StickyScrolling content={features} /> */}
+        {/* Sticky Section */}
+        <StickyScrolling features={features} />
+
+        {/* Call to Action */}
+        <div className="py-24 bg-gradient-to-b from-slate-800 to-slate-900">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+            <motion.h2
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              className="text-4xl md:text-5xl font-bold mb-8 bg-gradient-to-r from-purple-400 via-pink-500 to-red-500 text-transparent bg-clip-text"
+            >
+              Ready to Begin Your Story?
+            </motion.h2>
+            <motion.p
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ delay: 0.2 }}
+              className="text-xl text-gray-300 max-w-3xl mx-auto mb-12"
+            >
+              Join thousands of storytellers who are creating, collaborating, and captivating
+              audiences with Talespire.
+            </motion.p>
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ delay: 0.4 }}
+            >
+              <button
+                className="bg-gradient-to-r from-purple-500 to-pink-500 text-white px-10 py-4 rounded-full text-lg font-medium hover:shadow-lg hover:shadow-purple-500/30 transition-all"
+                onClick={() => navigate('/login')}
+              >
+                Get Started for Free
+              </button>
+            </motion.div>
+          </div>
+        </div>
       </div>
+
+      {/* Collaborative Editor Modal */}
+      <CollaborativeEditor
+        isOpen={showCollaborativeEditor}
+        onClose={toggleCollaborativeEditor}
+      />
     </div>
   );
 }

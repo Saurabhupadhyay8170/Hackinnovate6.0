@@ -1,13 +1,15 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { GoogleLogin } from '@react-oauth/google';
 import { useNavigate } from 'react-router-dom';
 import * as jwt_decode from 'jwt-decode';
 import axios from 'axios';
 import { motion } from 'framer-motion';
-import { Sparkles, Rocket, Users, Pen, Share2, BookOpen } from 'lucide-react';
+import { Sparkles, Rocket, Users, Pen, Share2, BookOpen, Edit3 } from 'lucide-react';
+import CollaborativeEditor from '../components/CollaborativeEditor/CollaborativeEditor';
 
 function Login() {
   const navigate = useNavigate();
+  const [showCollaborativeEditor, setShowCollaborativeEditor] = useState(false);
 
   const handleGoogleSuccess = async (credentialResponse) => {
     try {
@@ -32,7 +34,7 @@ function Login() {
         email: decoded.email,
         picture: decoded.picture,
       }));
-      
+
       navigate('/dashboard');
     } catch (error) {
       console.error('Error processing Google login:', error);
@@ -44,6 +46,10 @@ function Login() {
 
   const handleGoogleError = (error) => {
     console.error('Google login failed:', error);
+  };
+
+  const toggleCollaborativeEditor = () => {
+    setShowCollaborativeEditor(!showCollaborativeEditor);
   };
 
   return (
@@ -72,7 +78,7 @@ function Login() {
             }}
           />
         ))}
-        
+
         {/* Gradient Orbs */}
         <motion.div
           animate={{
@@ -103,14 +109,14 @@ function Login() {
       {/* Main Content */}
       <div className="relative z-10 w-full max-w-screen-xl px-4 flex flex-col md:flex-row items-center justify-center gap-8 md:gap-16">
         {/* Left Side - Welcome Text */}
-        <motion.div 
+        <motion.div
           initial={{ opacity: 0, x: -50 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ duration: 0.8 }}
           className="w-full md:w-1/2 text-center md:text-left"
         >
           <h1 className="text-5xl md:text-7xl font-bold mb-6 bg-gradient-to-r from-white via-purple-200 to-purple-400 bg-clip-text text-transparent">
-            Welcome to StoryMosaic
+            Welcome to Talespire
           </h1>
           <p className="text-lg md:text-xl text-purple-200/80 mb-8">
             Where imagination meets collaboration. Create, share, and bring your stories to life.
@@ -135,6 +141,20 @@ function Login() {
               <p className="text-purple-200/60">Creative writing</p>
             </div>
           </div>
+
+          {/* Try Collaborative Editor Button */}
+          <motion.button
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8, delay: 0.4 }}
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            onClick={toggleCollaborativeEditor}
+            className="mt-8 flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-purple-600/20 to-pink-600/20 border border-purple-500/50 rounded-full text-white hover:from-purple-600/30 hover:to-pink-600/30"
+          >
+            <Edit3 className="w-5 h-5 text-purple-400" />
+            Try Collaborative Editor Without Login
+          </motion.button>
         </motion.div>
 
         {/* Right Side - Login Card */}
@@ -144,12 +164,11 @@ function Login() {
           transition={{ duration: 0.8 }}
           className="w-full md:w-1/3"
         >
-          <motion.div 
+          <motion.div
             transition={{ duration: 0.2 }}
             className="relative overflow-hidden bg-black/40 backdrop-blur-xl border-[1px] border-gradient-to-r from-purple-500 to-pink-500  rounded-xl"
             style={{
               borderImage: 'linear-gradient(to right, rgb(168, 85, 247), rgb(236, 72, 153)) 1'
-              // borderRadius: '1rem',
             }}
           >
             <div className="p-8">
@@ -175,11 +194,12 @@ function Login() {
                   <GoogleLogin
                     onSuccess={handleGoogleSuccess}
                     onError={handleGoogleError}
-                    useOneTap
+                    useOneTap={false}
                     theme="filled_black"
                     shape="pill"
                     size="large"
                     locale="en"
+                    auto_select={false}
                   />
                 </motion.div>
               </div>
@@ -195,6 +215,12 @@ function Login() {
           </motion.div>
         </motion.div>
       </div>
+
+      {/* Collaborative Editor Modal */}
+      <CollaborativeEditor
+        isOpen={showCollaborativeEditor}
+        onClose={toggleCollaborativeEditor}
+      />
     </div>
   );
 }

@@ -1,15 +1,15 @@
 import React from "react";
 import { Link } from "react-router-dom";
 import { FaTwitter, FaInstagram, FaLinkedinIn } from "react-icons/fa";
-import { 
-  BookOpen, 
-  Feather, 
-  Users, 
-  Mail, 
-  MapPin, 
-  FileText, 
-  MessageSquare, 
-  Star, 
+import {
+  BookOpen,
+  Feather,
+  Users,
+  Mail,
+  MapPin,
+  FileText,
+  MessageSquare,
+  Star,
   HelpCircle,
   Sparkles
 } from "lucide-react";
@@ -41,9 +41,9 @@ function Footer() {
 
   // Define contact items
   const contactItems = [
-    { 
-      icon: MapPin, 
-      text: "Ahmedabad University",
+    {
+      icon: MapPin,
+      text: "Nitra Technical Campus",
       link: "https://www.google.com/maps?client=ubuntu-sn&channel=fs&um=1&ie=UTF-8&fb=1&gl=in&sa=X&geocode=KQ8Ehl-NhF45MUIWhSS2yAx6&daddr=Naranpark+Society,+Navrangpura,+Ahmedabad,+Gujarat+380009"
     },
     // { 
@@ -59,14 +59,14 @@ function Footer() {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-12 mb-16">
           {/* Brand Section */}
           <div className="lg:col-span-1 flex flex-col items-center sm:items-start">
-            <motion.div 
+            <motion.div
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
               className="flex items-center gap-2 mb-6"
             >
               <Feather className="h-8 w-8 text-purple-400" />
               <span className="text-2xl font-bold bg-gradient-to-r from-purple-400 to-pink-400 text-transparent bg-clip-text">
-                StoryMosaic
+                Talespire
               </span>
             </motion.div>
             <p className="text-gray-400 mb-6 text-center sm:text-left">
@@ -94,7 +94,7 @@ function Footer() {
             </h4>
             <ul className="space-y-4">
               {featureItems.map((item) => (
-                <motion.li 
+                <motion.li
                   key={item.name}
                   whileHover={{ x: 5 }}
                   className="group"
@@ -117,7 +117,7 @@ function Footer() {
             </h4>
             <ul className="space-y-4">
               {resourceItems.map((item) => (
-                <motion.li 
+                <motion.li
                   key={item.name}
                   whileHover={{ x: 5 }}
                   className="group"
@@ -140,7 +140,7 @@ function Footer() {
             </h4>
             <ul className="space-y-4">
               {contactItems.map((item, index) => (
-                <motion.li 
+                <motion.li
                   key={index}
                   whileHover={{ x: 5 }}
                   className="flex items-center gap-3 text-gray-400 group"
@@ -158,7 +158,7 @@ function Footer() {
         {/* Bottom Section */}
         <div className="border-t border-purple-500/20 pt-6">
           <p className="text-gray-400 text-center">
-            © {new Date().getFullYear()} StoryMosaic. codePirates - Vishv Boda, Deep Patel, Subrat Jain, Nirav Shah
+            © {new Date().getFullYear()} Talespire. coding Ninjas -
           </p>
         </div>
       </div>
